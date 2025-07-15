@@ -88,8 +88,6 @@ for scenario in scenarios:
     )
 
     #  INITIALIZE DISCRETIZATION OBJECT
-    print('INITIALIZE DISCRETIZATION OBJECT')
-
     flopy.mf6.ModflowGwfdis(
         gwf,
         nlay=60,
@@ -102,13 +100,12 @@ for scenario in scenarios:
     )
 
     #  SETTING INITIAL CONDITIONS
-    print('INITIALIZE IC')
-
-    flopy.mf6.ModflowGwfic(gwf, strt=100)
+    flopy.mf6.ModflowGwfic(
+        gwf,
+        strt=100
+    )
 
     # INITIALIZE NODE PROPERTIES FILE
-    print('INITIALIZE NPF')
-
     hk_array = np.ones((gwf.modelgrid.nlay, gwf.modelgrid.ncol))
     hk_array = hk_array*(50/600)  # the approximate speed of transport in a youtube video I saw
 
@@ -139,13 +136,12 @@ for scenario in scenarios:
     )
 
     # RECHARGE RECHARGE RECHARGE
-    print('RECHARGE RECHARGE RECHARGE')
-
-    flopy.mf6.ModflowGwfrcha(gwf, recharge=1/100)
+    flopy.mf6.ModflowGwfrcha(
+        gwf,
+        recharge=1/100
+    )
 
     # DRAINS DRAINS DRAINS
-    print('DRAINS DRAINS DRAINS')
-
     drn_spd = {0:[]}
     for ccc in range(gwf.modelgrid.ncol):
 
@@ -158,7 +154,10 @@ for scenario in scenarios:
             drn_spd[0].append([0, 0, ccc, 100, 1e5])
 
     # initialize the drains object
-    flopy.mf6.ModflowGwfdrn(gwf, stress_period_data=drn_spd)
+    flopy.mf6.ModflowGwfdrn(
+        gwf,
+        stress_period_data=drn_spd
+    )
 
 
     head_filerecord = f"{model_name}.hds"
@@ -171,18 +170,16 @@ for scenario in scenarios:
     )
 
     # WRITE THE INPUTS
-
-    print('WRITE THE INPUTS')
-
-    # write the input files
     sim.write_simulation()
 
     # RUN THE MODEL
-
-    print('RUN THE MODEL')
-
     success, buff = sim.run_simulation(silent=False)
     if not success:
         raise Exception("MODFLOW 6 did not terminate normally.")
 
     scd[scenario] = sim
+
+
+# animation building will go here and be built using the scd variable from above
+
+
