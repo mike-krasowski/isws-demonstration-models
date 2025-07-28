@@ -11,6 +11,7 @@ import flopy
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
+from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
@@ -19,6 +20,9 @@ import shapely
 from shapely import Polygon
 import shutil
 import time
+
+colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
+atr_cmap = LinearSegmentedColormap.from_list('AlphaToRed', colors, N=100)
 
 def find_cells_within_polygon( polygon, gridx, gridy ):
     """
@@ -282,7 +286,7 @@ def run_the_models(sname):
     #  SETTING INITIAL CONDITIONS
     flopy.mf6.ModflowGwfic(
         gwf,
-        strt=l_z  # model top, doesn't have to be, though.
+        strt=l_z/1.5  # model top, doesn't have to be, though.
     )
 
     # INITIALIZE NODE PROPERTIES FILE
@@ -404,7 +408,11 @@ def run_the_models(sname):
     imsgwf = flopy.mf6.ModflowIms(
         sim,
         print_option="summary",
-        complexity='complex'
+        complexity='complex',
+        inner_maximum=100000,
+        outer_maximum=100000,
+        outer_dvclose=1e-2,
+        inner_dvclose=1e-2,
     )
 
     sim.register_ims_package(imsgwf, [gwf.name])
@@ -474,7 +482,7 @@ def run_the_models(sname):
     )
 
     # Instantiating MODFLOW 6 transport dispersion package
-    dsp_dispersivity = 10
+    dsp_dispersivity = 1
     dsp_dmcoef = 1e-6
     flopy.mf6.ModflowGwtdsp(
         gwt,
@@ -520,12 +528,17 @@ def run_the_models(sname):
         decay_sorbed=decay_arg,
         filename=f"{gwt.name}.mst",
     )
+    cnc_conc = 100
+    cnc_spd = {gwt.nper//2:[[(29,0,50), cnc_conc], [(30,0,50), cnc_conc], [(31,0,50), cnc_conc]]}
+    maxbound = 0
+    for key, item in cnc_spd.items():
+        if len(item) > maxbound:
+            maxbound = len(item)
 
-    cnc_spd = {1:[[(29,0,50), 20], [(30,0,50), 20], [(31,0,50), 20]]}
     flopy.mf6.ModflowGwtcnc(
         gwt,
         # boundnames=True,
-        maxbound=len(cnc_spd[1]),
+        maxbound=maxbound,
         stress_period_data=cnc_spd,
         save_flows=False,
         pname="CNC-1",
@@ -564,10 +577,12 @@ def run_the_models(sname):
         sim,
         print_option="SUMMARY",
         complexity='complex',
-        # outer_dvclose=hclose,
+        outer_dvclose=1e-3,
+        inner_dvclose=1e-3,
         # outer_maximum=nouter,
         # under_relaxation="NONE",
-        # inner_maximum=ninner,
+        inner_maximum=100000,
+        outer_maximum=100000,
         # inner_dvclose=hclose,
         # rcloserecord=rclose,
         # linear_acceleration="BICGSTAB",
@@ -734,7 +749,8 @@ def make_the_animation(sim, nodes):
     # load concentrations
     concs = gwt.output.concentration().get_alldata()
 
-    concs = np.where(concs > 1e20, np.nan, concs)
+    cnc_conc = 100
+    concs = np.where(concs > cnc_conc, np.nan, concs)
 
     # load paths
     fpth = os.path.join(sim.sim_path, 'mp', f"mp_{sname}.mppth")
@@ -786,7 +802,7 @@ def make_the_animation(sim, nodes):
             xsec_r.plot_grid(linewidths=0.25)
 
             # xsec_r.plot_ibound()
-            xsec_r.plot_array(concs[sp], cmap='jet')
+            xsec_r.plot_array(concs[sp], cmap=atr_cmap)
             xsec_r.plot_inactive()
 
             # plot pathlines
