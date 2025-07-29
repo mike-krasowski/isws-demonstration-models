@@ -8,10 +8,10 @@ July 16th, 2025
 # imports
 import concurrent.futures
 import flopy
-import geopandas as gpd
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
+from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -22,6 +22,14 @@ from shapely import Polygon
 import shutil
 import time
 
+lith_colors = ['lightgray', 'moccasin', 'tan', 'black', 'sandybrown']
+lcmaps = {}
+for lcolor in np.unique(lith_colors):
+    name = 'alpha_to_' + lcolor
+    lcmaps[name] = LinearSegmentedColormap.from_list(
+        name,
+        [(220/255, 0.0, 0.0, 0.0), colors.to_rgba(lcolor)],
+        N=100)
 
 colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
 atr_cmap = LinearSegmentedColormap.from_list('AlphaToRed', colors, N=100)
@@ -746,6 +754,8 @@ def make_the_animation(sim, nodes):
 
         topopoly[id] = Polygon([(xxx, zzz) for xxx, zzz in zip(feature.x_coord, feature.z_coord)])
 
+    in_idx_list = determine_inside_indices(gwf, list(topopoly.values()), axis=1, buffer=None)
+
     print(gwf.name)
 
     print('ISWS: starting animation for scenario:', sname)
@@ -820,6 +830,25 @@ def make_the_animation(sim, nodes):
 
             xsec_r.plot_grid(linewidths=0.25, zorder=10000)
 
+            for pidx, (id, poly) in enumerate(topopoly.items()):
+
+                lith_array = in_idx_list[pidx]
+                # print('lith array', np.unique(lith_array))
+
+                if id in ['aquitard', 'aquiclude_1', 'aquiclude_2',
+                          'clay_layer_1', 'clay_layer_2', 'fractured_bedrock']:
+                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_lightgray'])
+                elif id in ['soil_zone', 'confined_artesian_aquifer']:
+                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_moccasin'])
+                elif id in ['fine_sand']:
+                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_tan'])
+                elif id in ['unconfined_aquifer']:
+                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_sandybrown'])
+                elif id in ['inactive']:
+                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_black'])
+                else:
+                    print('ruh roh!')
+
             # xsec_r.plot_ibound()
             xsec_r.plot_array(concs[sp], cmap=atr_cmap, zorder=5000)
             xsec_r.plot_inactive()
@@ -833,11 +862,11 @@ def make_the_animation(sim, nodes):
             # plot polygons, colors need to  match order of np.unique call which is topopoly alphabetical
             colors = ['lightgray', 'lightgray', 'lightgray', 'lightgray', 'lightgray', 'moccasin',
                       'tan', 'lightgray', 'black', 'moccasin', 'sandybrown']
-            for pidx, (id, poly) in enumerate(topopoly.items()):
-                if sp == 1:
-                    print('isws: id:', id)
-                # p = gpd.GeoSeries(poly)
-                poly.plot(color=colors[pidx], alpha=1.0, ax=ax)  # zorder=10000,
+            # for pidx, (id, poly) in enumerate(topopoly.items()):
+            #     if sp == 1:
+            #         print('isws: id:', id)
+            #     # p = gpd.GeoSeries(poly)
+            #     poly.plot(color=colors[pidx], alpha=1.0, ax=ax)  # zorder=10000,
 
             # set title of subplot
             ax.set_title('Scenario: {}, time: {}'.format(sname, spd_schedule.end[sp]))
