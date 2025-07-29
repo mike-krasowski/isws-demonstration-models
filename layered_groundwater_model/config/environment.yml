@@ -1,14 +1,13 @@
-name: layered_gw_model
+name: isws-demonstration-models
 channels:
   - conda-forge
   - defaults
 dependencies:
   - flopy
-  - pyyaml
-  - rioxarray
-  - geopandas
+  - matplotlib
+  - numpy
   - openpyxl
-  - sqlalchemy
-  - cartopy
-  - pip:
-    - pyodbc
+  - pandas
+  - pip
+  - pyyaml
+  - shapely
