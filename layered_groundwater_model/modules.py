@@ -22,14 +22,14 @@ from shapely import Polygon
 import shutil
 import time
 
-lith_colors = ['lightgray', 'moccasin', 'tan', 'black', 'sandybrown']
-lcmaps = {}
-for lcolor in np.unique(lith_colors):
-    name = 'alpha_to_' + lcolor
-    lcmaps[name] = LinearSegmentedColormap.from_list(
+topo_colors = ['lightgray', 'moccasin', 'tan', 'black', 'sandybrown', 'cornflowerblue']
+tcmaps = {}
+for tcolor in np.unique(topo_colors):
+    name = 'alpha_to_' + tcolor
+    tcmaps[name] = LinearSegmentedColormap.from_list(
         name,
-        [(220/255, 0.0, 0.0, 0.0), colors.to_rgba(lcolor)],
-        N=100)
+        [(220/255, 0.0, 0.0, 0.0), colors.to_rgba(tcolor)],
+        N=2)
 
 colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
 atr_cmap = LinearSegmentedColormap.from_list('AlphaToRed', colors, N=100)
@@ -208,7 +208,7 @@ def run_the_models(sname):
 
     print('ISWS: starting model for scenario:', sname)
 
-    spds_path = './inputs/scenarios_short2.xlsx'
+    spds_path = './inputs/scenarios_short3.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()
@@ -280,6 +280,7 @@ def run_the_models(sname):
     in_idx_list = determine_inside_indices(gwf, list(topopoly.values()), axis=1, buffer=None)
 
     idomain = (in_idx_list[-3] * -1) + 1
+    idomain[in_idx_list[-4]] = 0
 
     flopy.mf6.ModflowGwfdis(
         gwf,
@@ -356,6 +357,7 @@ def run_the_models(sname):
                                gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1,
                                1,
                                gwf.modelgrid.zcellcenters[lll, 0, ccc]])
+            print('isws, riv elev:', gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1)
 
         elif ccc < 74:
             drn_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc], 1e5])
@@ -643,16 +645,20 @@ def run_the_models(sname):
 
     mp_locs = []
 
-    for lll in range(gwf.modelgrid.nlay):
-        for rrr in range(gwf.modelgrid.nrow):
-            for ccc in [80, 99]:
+    # for lll in range(gwf.modelgrid.nlay):
+    #     for rrr in range(gwf.modelgrid.nrow):
+    #         for ccc in [80, 99]:
+    #
+    #             # ccc = 95
+    #
+    #             if idomain[lll, ccc] == 1:
+    #
+    #                 if (lll % 2 == 0 ) and (ccc % 5 == 0 ):
+    #                     mp_locs.append((lll, rrr, ccc))
 
-                # ccc = 95
-
-                if idomain[lll, ccc] == 1:
-
-                    if (lll % 2 == 0 ) and (ccc % 5 == 0 ):
-                        mp_locs.append((lll, rrr, ccc))
+    for sp, entry in chd_spd.items():
+        for ch in entry:
+            mp_locs.append(ch[0])
 
     # mp_locs.append((20, 0, 95))
     # mp_locs.append((25, 0, 95))
@@ -689,7 +695,7 @@ def run_the_models(sname):
     pg = flopy.modpath.ParticleGroupNodeTemplate(
         particlegroupname='PG1',
         # filename=None,
-        releasedata=[8, 1, 10],
+        releasedata=[gwf.nper//10, 1, 10],
         particledata=pd)
 
     pgs = [pg]
@@ -762,7 +768,7 @@ def make_the_animation(sim, nodes):
 
     fig, ax = plt.subplots()
 
-    spds_path = './inputs/scenarios_short2.xlsx'
+    spds_path = './inputs/scenarios_short3.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()
@@ -837,21 +843,23 @@ def make_the_animation(sim, nodes):
 
                 if id in ['aquitard', 'aquiclude_1', 'aquiclude_2',
                           'clay_layer_1', 'clay_layer_2', 'fractured_bedrock']:
-                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_lightgray'])
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_lightgray'])
                 elif id in ['soil_zone', 'confined_artesian_aquifer']:
-                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_moccasin'])
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_moccasin'])
                 elif id in ['fine_sand']:
-                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_tan'])
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_tan'])
                 elif id in ['unconfined_aquifer']:
-                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_sandybrown'])
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_sandybrown'])
                 elif id in ['inactive']:
-                    xsec_r.plot_array(lith_array, cmap=lcmaps['alpha_to_black'])
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_black'])
+                elif id in ['river_channel']:
+                    xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_cornflowerblue'])
                 else:
                     print('ruh roh!')
 
             # xsec_r.plot_ibound()
             xsec_r.plot_array(concs[sp], cmap=atr_cmap, zorder=5000)
-            xsec_r.plot_inactive()
+            # xsec_r.plot_inactive()
 
             # plot pathlines
             if sp >= 1:

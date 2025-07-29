@@ -8,6 +8,8 @@ July 14th, 2025
 
 # imports
 import concurrent.futures
+from logging import exception
+
 import flopy
 import numpy as np
 import matplotlib as mpl
@@ -37,31 +39,37 @@ start_time = time.time()
 
 # define an outputs folder
 savepath = 'outputs'
-shutil.rmtree(savepath)
-if not os.path.exists(savepath):
-    os.makedirs(savepath)
 
-# user inputs
-max_workers = 8
+# if it exists, clear it
+if os.path.exists(savepath):
+    shutil.rmtree(savepath)
 
-spds_path = './inputs/scenarios_short2.xlsx'
+# make the outputs folder
+os.makedirs(savepath)
+
+# user inputs, user inputs, user inputs
+max_workers = 9
+
+spds_path = './inputs/scenarios_short3.xlsx'
 exfi = pd.ExcelFile(spds_path)
 scenarios = exfi.sheet_names
 
-# scenarios = [scenarios[0]]
+scenarios = [scenarios[0]]
 
-# sim = main(scenarios[0])
+sim = main(scenarios[0])
 
-if __name__ == "__main__":
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        results = executor.map(main, scenarios)
+# end user inputs, end user inputs, end user inputs
 
+# if __name__ == "__main__":
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+#         results = executor.map(main, scenarios)
+#
 func_time = 0
-sims = []
-for ppp, result in enumerate(results):
-
-    sims.append(result[0])
-    func_time += result[1]
+# sims = []
+# for ppp, result in enumerate(results):
+#
+#     sims.append(result[0])
+#     func_time += result[1]
 
 print('ISWS: the WHOLE script took: {} mins with {} mins of function time'.format(
     round((time.time() - start_time)/60, 2),
