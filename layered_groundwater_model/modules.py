@@ -828,7 +828,7 @@ def make_the_animation(sim, nodes):
                                                  line={'Row': 0},
                                                  ax=ax)
 
-            xsec_r.plot_grid(linewidths=0.25, zorder=10000)
+            xsec_r.plot_grid(linewidths=0.1, color='black', zorder=10000)
 
             for pidx, (id, poly) in enumerate(topopoly.items()):
 
