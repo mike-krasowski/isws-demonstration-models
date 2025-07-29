@@ -1,0 +1,14 @@
+name: layered_gw_model
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - flopy
+  - pyyaml
+  - rioxarray
+  - geopandas
+  - openpyxl
+  - sqlalchemy
+  - cartopy
+  - pip:
+    - pyodbc
