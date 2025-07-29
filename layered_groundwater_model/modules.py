@@ -8,6 +8,7 @@ July 16th, 2025
 # imports
 import concurrent.futures
 import flopy
+import geopandas as gpd
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
@@ -20,6 +21,7 @@ import shapely
 from shapely import Polygon
 import shutil
 import time
+
 
 colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
 atr_cmap = LinearSegmentedColormap.from_list('AlphaToRed', colors, N=100)
@@ -332,6 +334,7 @@ def run_the_models(sname):
     )
 
     # coordinate CHD and DRN locations at the top of the model
+    riv_spd = {0: []}
     drn_spd = {0: []}
     chd_spd = {0: []}
     for ccc in range(gwf.modelgrid.ncol):
@@ -340,8 +343,11 @@ def run_the_models(sname):
             if idomain[lll, ccc] == 1:
                 break
 
-        if ccc < 10:
-            chd_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc]])
+        if ccc < 11:
+            riv_spd[0].append([(lll, 0, ccc),
+                               gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1,
+                               1,
+                               gwf.modelgrid.zcellcenters[lll, 0, ccc]])
 
         elif ccc < 74:
             drn_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc], 1e5])
@@ -349,16 +355,19 @@ def run_the_models(sname):
         else:
             chd_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc]])
 
-    # CONSTANT HEAD CONSTANT HEAD CONSTANT HEAD
+    # RIVERS RIVERS RIVERS
+    riv = flopy.mf6.ModflowGwfriv(
+        gwf,
+        stress_period_data=riv_spd
+    )
 
+    # CONSTANT HEAD CONSTANT HEAD CONSTANT HEAD
     chd = flopy.mf6.ModflowGwfchd(
         gwf,
         stress_period_data=chd_spd
     )
 
     # DRAINS DRAINS DRAINS
-
-    # initialize the drains object
     flopy.mf6.ModflowGwfdrn(
         gwf,
         stress_period_data=drn_spd
@@ -535,7 +544,7 @@ def run_the_models(sname):
         if len(item) > maxbound:
             maxbound = len(item)
 
-    flopy.mf6.ModflowGwtcnc(
+    cnc = flopy.mf6.ModflowGwtcnc(
         gwt,
         # boundnames=True,
         maxbound=maxbound,
@@ -577,8 +586,8 @@ def run_the_models(sname):
         sim,
         print_option="SUMMARY",
         complexity='complex',
-        outer_dvclose=1e-3,
-        inner_dvclose=1e-3,
+        outer_dvclose=1e-2,
+        inner_dvclose=1e-2,
         # outer_maximum=nouter,
         # under_relaxation="NONE",
         inner_maximum=100000,
@@ -727,6 +736,16 @@ def make_the_animation(sim, nodes):
 
     sname = gwf.name[-2:]
 
+    # import the geometries of the model (made by hand measurements of the table-top model
+    topodata = pd.read_excel('./inputs/topology.xlsx')
+
+    # create shapely polygons from measurements
+    topopoly = {}
+    for id in np.unique(topodata.id):
+        feature = topodata[topodata.id == id]
+
+        topopoly[id] = Polygon([(xxx, zzz) for xxx, zzz in zip(feature.x_coord, feature.z_coord)])
+
     print(gwf.name)
 
     print('ISWS: starting animation for scenario:', sname)
@@ -799,10 +818,10 @@ def make_the_animation(sim, nodes):
                                                  line={'Row': 0},
                                                  ax=ax)
 
-            xsec_r.plot_grid(linewidths=0.25)
+            xsec_r.plot_grid(linewidths=0.25, zorder=10000)
 
             # xsec_r.plot_ibound()
-            xsec_r.plot_array(concs[sp], cmap=atr_cmap)
+            xsec_r.plot_array(concs[sp], cmap=atr_cmap, zorder=5000)
             xsec_r.plot_inactive()
 
             # plot pathlines
@@ -810,6 +829,15 @@ def make_the_animation(sim, nodes):
                 # xsec_r.plot_pathline(pathlines_by_spv[sp], colors='cornflowerblue', lw=0.75)  # pathlines_by_sp[sp]
                 for pthl in pathlines_by_sp[sp]:
                     ax.plot(pthl[0], pthl[2], color='cornflowerblue', lw=0.75, zorder=1000)
+
+            # plot polygons, colors need to  match order of np.unique call which is topopoly alphabetical
+            colors = ['lightgray', 'lightgray', 'lightgray', 'lightgray', 'lightgray', 'moccasin',
+                      'tan', 'lightgray', 'black', 'moccasin', 'sandybrown']
+            for pidx, (id, poly) in enumerate(topopoly.items()):
+                if sp == 1:
+                    print('isws: id:', id)
+                # p = gpd.GeoSeries(poly)
+                poly.plot(color=colors[pidx], alpha=1.0, ax=ax)  # zorder=10000,
 
             # set title of subplot
             ax.set_title('Scenario: {}, time: {}'.format(sname, spd_schedule.end[sp]))
