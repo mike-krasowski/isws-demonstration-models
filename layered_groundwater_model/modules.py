@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
 import os
+import random
 import shapely
 from shapely import Polygon
 import shutil
@@ -185,7 +186,7 @@ def get_nodes(gwf, locs):
         nodes.append(k * gwf.modelgrid.nrow * gwf.modelgrid.ncol + i * gwf.modelgrid.ncol + j)
     return nodes
 
-def run_the_models(sname):
+def run_the_models(sname, wiggle):
 
     # why do I have to do this here for pandas, but not for any other package.... they're all imported up top!
     import pandas as pd
@@ -355,15 +356,17 @@ def run_the_models(sname):
         if ccc < 11:
             riv_spd[0].append([(lll, 0, ccc),
                                gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1,
-                               1,
+                               2,
                                gwf.modelgrid.zcellcenters[lll, 0, ccc]])
-            print('isws, riv elev:', gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1)
+        elif ccc <= 25:
+            # do nothing
+            pass
 
         elif ccc < 74:
             drn_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc], 1e5])
 
         else:
-            chd_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc]])
+            chd_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc]+wiggle])
 
     # RIVERS RIVERS RIVERS
     riv = flopy.mf6.ModflowGwfriv(
@@ -383,36 +386,75 @@ def run_the_models(sname):
         stress_period_data=drn_spd
     )
 
-    # WELLS WELLS WELLS
+    # get the location info (layer and column) of the elements of well_info
+    well_layer = []
+    well_row = []
+    well_column = []
+    for widx in well_info.index:
 
+        # find the layer
+        dell = gwf.modelgrid.top[0, 0] - gwf.modelgrid.botm[0, 0, 0]
+        lll = np.round((l_z - well_info.screen_top[widx]) / dell).astype(int)
+
+        # find the row
+        rrr = 0
+
+        # find the column
+        ccc = np.round(well_info.x_coord[widx] / gwf.modelgrid.delr)[0].astype(int)
+
+        well_layer.append(lll)
+        well_row.append(rrr)
+        well_column.append(ccc)
+
+    well_info['lay'] = well_layer
+    well_info['row'] = well_row
+    well_info['col'] = well_column
+
+    # WELLS WELLS WELLS
+    q_factor = 0.1
+    injection_conc = 100
     wel_spd = {}
     for sp in spd_schedule.index:
         wel_spd[sp] = []
 
-        for idx in well_info.index:
+        for widx in well_info.index:
 
-            if 'well' in well_info.id[idx]:
+            # find corresponding chem column
+            for skey in spd_schedule.keys():
+                if ('chem' in skey) and ('well' in well_info.id[widx]):
+                    if skey[-1] == well_info.id[widx][-1]:
 
-                if well_info.id[idx] in list(spd_schedule.keys()):
-                    # if spd_schedule[well_info.id[idx]][sp] != 0:
+                        # set the injection well concentration
+                        wel_conc = injection_conc * spd_schedule[skey][sp]
 
-                    # find the column
-                    ccc = np.round(well_info.x_coord[idx] / gwf.modelgrid.delr)[0].astype(int)
+                        # get the pumping rate
+                        qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
 
-                    # find the layer
-                    dell = gwf.modelgrid.top[0, 0] - gwf.modelgrid.botm[0, 0, 0]
-                    lll = np.round((l_z - well_info.screen_top[idx]) / dell).astype(int)
+                        # append into the dictionary
+                        wel_spd[sp].append(
+                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc])
 
-                    # get the pumping rate
-                    qqq = spd_schedule[well_info.id[idx]][sp] * 2
+                    else:
 
-                    # append into the dictionary
-                    wel_spd[sp].append([(lll, 0, ccc), qqq])
+                        # set the injection well concentration
+                        wel_conc = 0
+
+                        # get the pumping rate
+                        qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
+
+                        # append into the dictionary
+                        wel_spd[sp].append(
+                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc])
 
     wel = flopy.mf6.ModflowGwfwel(
         gwf,
+        print_input=True,
+        print_flows=True,
         stress_period_data=wel_spd,
-        maxbound=well_info.shape[0] * 2
+        auxiliary="CONCENTRATION",
+        save_flows=False,
+        maxbound=well_info.shape[0] * 2,
+        pname="WEL-1",
     )
 
     head_filerecord = f"{gwf.name}.hds"
@@ -424,14 +466,18 @@ def run_the_models(sname):
         saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
     )
 
+    nouter = 10000
+    ninner = 10000
+    outer_dvclose = 1e-3,
+    inner_dvclose = 1e-3,
     imsgwf = flopy.mf6.ModflowIms(
         sim,
         print_option="summary",
         complexity='complex',
-        inner_maximum=100000,
-        outer_maximum=100000,
-        outer_dvclose=1e-2,
-        inner_dvclose=1e-2,
+        inner_maximum=ninner,
+        outer_maximum=nouter,
+        outer_dvclose=outer_dvclose,
+        inner_dvclose=inner_dvclose,
     )
 
     sim.register_ims_package(imsgwf, [gwf.name])
@@ -450,6 +496,8 @@ def run_the_models(sname):
         modelname=gwtname,
         model_nam_file=f"{gwtname}.nam",
     )
+
+    gwt.name_file.save_flows = True
 
     # Instantiating MODFLOW 6 transport discretization package
     flopy.mf6.ModflowGwtdis(
@@ -493,7 +541,7 @@ def run_the_models(sname):
     # else:
     #     raise Exception()
 
-    scheme = "UPSTREAM"
+    scheme = "TVD"
     flopy.mf6.ModflowGwtadv(
         gwt,
         scheme=scheme,
@@ -501,7 +549,7 @@ def run_the_models(sname):
     )
 
     # Instantiating MODFLOW 6 transport dispersion package
-    dsp_dispersivity = 1
+    dsp_dispersivity = 0.1
     dsp_dmcoef = 1e-6
     flopy.mf6.ModflowGwtdsp(
         gwt,
@@ -547,8 +595,25 @@ def run_the_models(sname):
         decay_sorbed=decay_arg,
         filename=f"{gwt.name}.mst",
     )
-    cnc_conc = 100
-    cnc_spd = {gwt.nper//2:[[(29,0,50), cnc_conc], [(30,0,50), cnc_conc], [(31,0,50), cnc_conc]]}
+
+    # this next bit only works if we are only introducing chem one cell at a time
+    cnc_conc = injection_conc * 0.005
+    cnc_spd = {sp:[] for sp in spd_schedule.index}
+
+    linger_on = True
+    for key in spd_schedule.keys():
+        linger = False
+        for sp in spd_schedule.index:
+            if 'chem' in key:
+                if (spd_schedule.loc[sp, key] == 1) or linger:
+                    if linger_on:
+                        linger = True
+                    for widx in well_info.index:
+                        if ('well' in well_info.id[widx]) and (key[-1] == well_info.id[widx][-1]):
+                            cnc_spd[sp].append(
+                                [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), cnc_conc]
+                            )
+
     maxbound = 0
     for key, item in cnc_spd.items():
         if len(item) > maxbound:
@@ -557,16 +622,18 @@ def run_the_models(sname):
     cnc = flopy.mf6.ModflowGwtcnc(
         gwt,
         # boundnames=True,
-        maxbound=maxbound,
+        maxbound=maxbound+1,
         stress_period_data=cnc_spd,
         save_flows=False,
         pname="CNC-1",
         filename=f"{gwt.name}.cnc",
     )
 
-    # maybe add contaminant from well flux?
+    # initialize source sink mixing package
+    sourcerecarray = [("WEL-1", "AUX", "CONCENTRATION")]
     flopy.mf6.ModflowGwtssm(
         gwt,
+        sources=sourcerecarray,
         filename=f"{gwt.name}.ssm"
     )
 
@@ -589,19 +656,17 @@ def run_the_models(sname):
     # )
 
     # this is only needed if you want to use separate settings for the flow and transport models
-    nouter, ninner = 10000, 1000
     hclose, rclose, relax = 1e-2, 1e-1, 0.97  # 3e-2, 3e-2, 0.97
 
     imsgwt = flopy.mf6.ModflowIms(
         sim,
         print_option="SUMMARY",
         complexity='complex',
-        outer_dvclose=1e-2,
-        inner_dvclose=1e-2,
-        # outer_maximum=nouter,
+        outer_dvclose=outer_dvclose,
+        inner_dvclose=inner_dvclose,
         # under_relaxation="NONE",
-        inner_maximum=100000,
-        outer_maximum=100000,
+        inner_maximum=ninner,
+        outer_maximum=nouter,
         # inner_dvclose=hclose,
         # rcloserecord=rclose,
         # linear_acceleration="BICGSTAB",
@@ -634,9 +699,7 @@ def run_the_models(sname):
     sim.write_simulation()
 
     # RUN THE FLOW AND TRANSPORT MODELS
-    success, buff = sim.run_simulation(silent=False)
-    if not success:
-        raise Exception("MODFLOW 6 did not terminate normally.")
+    success_mf, buff = sim.run_simulation(silent=False)
 
     # MODPATH MODPATH MODPATH
     mp_path = os.path.join(sim.sim_path, 'mp')
@@ -645,20 +708,37 @@ def run_the_models(sname):
 
     mp_locs = []
 
-    # for lll in range(gwf.modelgrid.nlay):
-    #     for rrr in range(gwf.modelgrid.nrow):
-    #         for ccc in [80, 99]:
-    #
-    #             # ccc = 95
-    #
-    #             if idomain[lll, ccc] == 1:
-    #
-    #                 if (lll % 2 == 0 ) and (ccc % 5 == 0 ):
-    #                     mp_locs.append((lll, rrr, ccc))
+    for lll in range(gwf.modelgrid.nlay):
+        for rrr in range(gwf.modelgrid.nrow):
+            for ccc in range(gwf.modelgrid.ncol):
 
-    for sp, entry in chd_spd.items():
-        for ch in entry:
-            mp_locs.append(ch[0])
+                if idomain[lll, ccc] == 1:
+
+                    if (lll % 5 == 0) and (ccc % 5 == 0) and np.random.choice([True, True, True, False, False]):
+
+                        lllw = lll + np.random.choice([-2, -1, 0, 1, 2])  # [-2, -1, 0, 1, 2]
+                        if lllw >= gwf.modelgrid.nlay:
+                            lllw = gwf.modelgrid.nlay - 1
+                        elif lllw < 0:
+                            lllw = 0
+
+                        rrrw = rrr + np.random.choice([-2, -1, 0, 1, 2])
+                        if rrrw >= gwf.modelgrid.nrow:
+                            rrrw = gwf.modelgrid.nrow - 1
+                        elif rrrw < 0:
+                            rrrw = 0
+
+                        cccw = ccc + np.random.choice([-2, -1, 0, 1, 2])
+                        if cccw >= gwf.modelgrid.ncol:
+                            cccw = gwf.modelgrid.ncol - 1
+                        elif cccw < 0:
+                            cccw = 0
+
+                        mp_locs.append((int(lllw), int(rrrw), int(cccw)))
+
+    # for sp, entry in chd_spd.items():
+    #     for ch in entry:
+    #         mp_locs.append(ch[0])
 
     # mp_locs.append((20, 0, 95))
     # mp_locs.append((25, 0, 95))
@@ -725,12 +805,17 @@ def run_the_models(sname):
     mp.write_input()
 
     # run modpath
-    success, buff = mp.run_model(silent=True, report=True)
-    assert success, "mp7 forward tracking failed to run"
-    # for line in buff:
-    #     print(name, line)
+    success_mp, buff = mp.run_model(silent=True, report=True)
+    for line in buff:
+        print(line)
 
-    return sim, nodes
+    success = False
+    if success_mf and success_mp:
+        success = True
+    else:
+        print('ISWS: success_mf is {} and success_mp is {}.'.format(success_mf, success_mp))
+
+    return success, sim, nodes
 
 
 def make_the_animation(sim, nodes):
@@ -762,7 +847,7 @@ def make_the_animation(sim, nodes):
 
     in_idx_list = determine_inside_indices(gwf, list(topopoly.values()), axis=1, buffer=None)
 
-    print(gwf.name)
+    print('ISWS: gwf.name:', gwf.name)
 
     print('ISWS: starting animation for scenario:', sname)
 
@@ -777,15 +862,16 @@ def make_the_animation(sim, nodes):
     fname = os.path.join(gwf.model_ws[:-1], gwf.name + '.hds')
     head_obj = flopy.utils.binaryfile.HeadFile(fname)
     heads = head_obj.get_alldata()
-    # print(dir(head_obj))
-    # print(head_obj._get_header())
     head_obj.close()
+
+    # swap the inactive value with np.nan
+    heads = np.where(heads>=1e30, np.nan, heads)
 
     # load concentrations
     concs = gwt.output.concentration().get_alldata()
 
-    cnc_conc = 100
-    concs = np.where(concs > cnc_conc, np.nan, concs)
+    input_conc = 100
+    concs = np.where(concs > input_conc, np.nan, concs)
 
     # load paths
     fpth = os.path.join(sim.sim_path, 'mp', f"mp_{sname}.mppth")
@@ -818,11 +904,7 @@ def make_the_animation(sim, nodes):
                     pathlines_by_spv[sp].append(pvoid)
                     pathlines_by_spv[sp][-1] = np.append(pathlines_by_spv[sp][-1], pvoid)
 
-            # print('ISWS: sp, len(pathlines_by_sp[sp][-1][0]):', sp, len(pathlines_by_sp[sp][-1][0]))
-
-        # raise Exception
-
-    with vid.saving(fig, os.path.join(savepath, '{}.mp4'.format(sname)), 100):
+    with vid.saving(fig, os.path.join(savepath, '{}.gif'.format(sname)), 600):
 
         for sp in range(gwf.nper):
 
@@ -839,7 +921,6 @@ def make_the_animation(sim, nodes):
             for pidx, (id, poly) in enumerate(topopoly.items()):
 
                 lith_array = in_idx_list[pidx]
-                # print('lith array', np.unique(lith_array))
 
                 if id in ['aquitard', 'aquiclude_1', 'aquiclude_2',
                           'clay_layer_1', 'clay_layer_2', 'fractured_bedrock']:
@@ -857,27 +938,58 @@ def make_the_animation(sim, nodes):
                 else:
                     print('ruh roh!')
 
-            # xsec_r.plot_ibound()
+            # plot wells
+            well_info = pd.read_csv('./inputs/well_info.csv')
+
+            for widx in well_info.index:
+                wid = well_info.id[widx]
+                if wid in list(spd_schedule.keys()):
+                    if spd_schedule[wid][sp] != 0:
+                        wcolor = (1, 0, 0, 0.75)
+                    else:
+                        wcolor = (1, 1, 1, 0.5)
+                else:
+                    wcolor = (1, 1, 1, 0.5)
+
+                w_x1 = well_info.x_coord[widx]
+                w_z1 = well_info.z_coord[widx]
+                w_z2 = well_info.screen_top[widx]
+
+                if not np.isnan(well_info.screen_bottom[widx]):
+                    w_z2 = well_info.screen_bottom[widx]
+
+                ax.plot([w_x1, w_x1],[w_z1, w_z2], color=wcolor, linewidth=2)
+
             xsec_r.plot_array(concs[sp], cmap=atr_cmap, zorder=5000)
-            # xsec_r.plot_inactive()
 
             # plot pathlines
             if sp >= 1:
-                # xsec_r.plot_pathline(pathlines_by_spv[sp], colors='cornflowerblue', lw=0.75)  # pathlines_by_sp[sp]
                 for pthl in pathlines_by_sp[sp]:
-                    ax.plot(pthl[0], pthl[2], color='cornflowerblue', lw=0.75, zorder=1000)
+                    if np.random.choice([True, True, True, True, False]):
+                        ax.plot(pthl[0], pthl[2], color='cornflowerblue', lw=0.75, zorder=1000)
+                        # counter += 1
 
-            # plot polygons, colors need to  match order of np.unique call which is topopoly alphabetical
-            colors = ['lightgray', 'lightgray', 'lightgray', 'lightgray', 'lightgray', 'moccasin',
-                      'tan', 'lightgray', 'black', 'moccasin', 'sandybrown']
-            # for pidx, (id, poly) in enumerate(topopoly.items()):
-            #     if sp == 1:
-            #         print('isws: id:', id)
-            #     # p = gpd.GeoSeries(poly)
-            #     poly.plot(color=colors[pidx], alpha=1.0, ax=ax)  # zorder=10000,
+            # plot potentiometric surface
+            pot_surf = np.zeros(heads.shape[3])
+            for ccc in range(heads.shape[3]):
 
-            # set title of subplot
+                for lll in range(gwf.dis.idomain.array.shape[0]):
+                    if gwf.dis.idomain.array[lll, 0, ccc] == 1:
+                        break
+
+
+                pot_surf[ccc] = np.nanmax(heads[sp, lll, 0, ccc])
+
+            ax.plot(gwf.modelgrid.xcellcenters.flatten(), pot_surf, lw=1.25, color='cornflowerblue')
+
+            # figure finagling
             ax.set_title('Scenario: {}, time: {}'.format(sname, spd_schedule.end[sp]))
+
+            ax.axis('equal')
+            ax.axis('off')
+
+            fig.tight_layout()
+
 
             # fig.legend(handles=hdls, loc='upper left', bbox_to_anchor=(0.81, 0.62), title='Concentration, (ppb)')
             # set super title for figure

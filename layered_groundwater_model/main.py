@@ -8,16 +8,15 @@ July 14th, 2025
 
 # imports
 import concurrent.futures
-from logging import exception
-
 import flopy
-import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import pandas as pd
+import numpy as np
 import os
+import pandas as pd
+import random
 from shapely import Polygon
 import shutil
 import time
@@ -28,7 +27,12 @@ def main(name):
 
     start_time = time.time()
 
-    sim, nodes = run_the_models(name)
+    success = False
+    wiggle = 0
+    while not success:
+
+        success, sim, nodes = run_the_models(name, wiggle)
+        wiggle = random.choice([1,-1]) * random.random() * 0.1
 
     sim = make_the_animation(sim, nodes)
 
@@ -54,22 +58,20 @@ spds_path = './inputs/scenarios_short3.xlsx'
 exfi = pd.ExcelFile(spds_path)
 scenarios = exfi.sheet_names
 
-scenarios = [scenarios[0]]
-
-sim = main(scenarios[0])
+scenarios = scenarios[:2]
 
 # end user inputs, end user inputs, end user inputs
 
-# if __name__ == "__main__":
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-#         results = executor.map(main, scenarios)
-#
+if __name__ == "__main__":
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = executor.map(main, scenarios)
+
 func_time = 0
-# sims = []
-# for ppp, result in enumerate(results):
-#
-#     sims.append(result[0])
-#     func_time += result[1]
+sims = []
+for ppp, result in enumerate(results):
+
+    sims.append(result[0])
+    func_time += result[1]
 
 print('ISWS: the WHOLE script took: {} mins with {} mins of function time'.format(
     round((time.time() - start_time)/60, 2),
