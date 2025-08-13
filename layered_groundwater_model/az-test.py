@@ -2,7 +2,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import flopy
 
-file_path = "C:\GitHub\isws-demonstration-models\layered_groundwater_model\outputs\s1\gwf_s1.dis"  # Replace with your actual file path
+def vdir(n):
+    for i in dir(n):
+        print(i)
+
+file_path = r"./outputs/s1/"  # Replace with your actual file path
+
+mf = flopy.mf6.MFSimulation.load(
+    sim_name="mfsim", #.nam",
+    sim_ws=file_path,
+    )
+gwf = mf.get_model("gwf_s1")
+
+path2 = r".\outputs\s1\gwf_s1.hds"
+
+import flopy.utils.binaryfile as bf
+hds = bf.HeadFile(path2).get_alldata() # (time, layer, row, column)
+
+# read in well csv --> pandas as pd --> pd.read_csv
+# determine well locations and cells from csv
+# plot time series at each location
+
+# plt.plot(hds[time, z, y(into page), x])
+plt.plot(hds[:,30, 0, 50])
+plt.show()
+
+raise Exception('AEJ breaks stuff.')
+
 
 try:
     with open(file_path, 'r') as file:
@@ -31,5 +57,6 @@ except Exception as e:
 
 # IDEAS:
 #   - load model results
-#   - query model results (e.g., pressures at well locations)
-#   - plot time series of pressure/flow rate in model
+#   - query model results (e.g., pressures at well locations) (gwf)
+#   - plot time series of pressure/flow rate in model (gwf)
+#   - plot breakthrough curves (gwt)
