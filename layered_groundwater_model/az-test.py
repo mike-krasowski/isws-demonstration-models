@@ -17,19 +17,26 @@ gwf = mf.get_model("gwf_s1")
 path2 = r".\outputs\s1\gwf_s1.hds"
 
 import flopy.utils.binaryfile as bf
+import pandas as pd
 hds = bf.HeadFile(path2).get_alldata() # (time, layer, row, column)
+print (hds)
+print("soy")
+df = pd.DataFrame(hds)
+df.to_csv("heads_data.csv", index=None)
 
+
+print ("squeeks")
 # read in well csv --> pandas as pd --> pd.read_csv
 # determine well locations and cells from csv
 # plot time series at each location
 
 # plt.plot(hds[time, z, y(into page), x])
-plt.plot(hds[:,30, 0, 50])
-plt.show()
+#plt.plot(hds[:,30, 0, 50])
+#plt.show()
 
 raise Exception('AEJ breaks stuff.')
 
-
+'''
 try:
     with open(file_path, 'r') as file:
         # Read the entire content of the file
@@ -45,7 +52,7 @@ except FileNotFoundError:
     print(f"Error: The file at '{file_path}' was not found.")
 except Exception as e:
     print(f"An error occurred: {e}")
-
+'''
 
 #text = 'ATTICUS >> FEDS!'
 
