@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as mpl; mpl.use("WebAgg")
 import matplotlib.pyplot as plt
 import flopy
 
@@ -25,32 +26,48 @@ print ("squeeks")
 # read in well csv --> pandas as pd --> pd.read_csv
 well = pd.read_csv('./inputs/well_info.csv')
 print (well)
-'''
-# determine well locations and cells from csv
-xyz = gwf.modelgrid.xyzcellcenters
-coords = well.loc[
-    (well['id']=='well_2'),
-    ['x_coord', 'z_coord']
-]
-'''
+
+
+
+# # determine well locations and cells from csv
+# xyz = gwf.modelgrid.xyzcellcenters
+# coords = well.loc[
+#     ((well['type']=='well') & (well['id']=='well_2')),
+#     ['id','x_coord', 'z_coord']
+# ]
+# print(coords)
+#
+# x_bin = int(coords.iloc[0]['x_coord'] // gwf.modelgrid.delr[0])
+# z_bin = int(coords.iloc[0]['z_coord'] // gwf.modelgrid.delz[0,0,0])
+# print(x_bin)
+# print(z_bin)
+#
+# # plot time series at each location --> plt.plot(hds[time, z, y(into page), x])
+# plt.plot(hds[:, z_bin, 0, x_bin])
+# plt.show()
+#
+# print('Script Finished.')
 
 # determine well locations and cells from csv
 xyz = gwf.modelgrid.xyzcellcenters
-coords = well.loc[
-    ((well['type']=='well') & (well['id']=='well_2')),
-    ['id','x_coord', 'z_coord']
-]
-print (coords)
-x_bin = int(coords['x_coord'][0] // gwf.modelgrid.delr[0])
-z_bin = int(coords['z_coord'][0] // gwf.modelgrid.delz[0,0,0])
-print (x_bin)
-print (z_bin)
-'''
+coords = well.set_index('type')
+
+x_bin = coords.loc['well']['x_coord'] // gwf.modelgrid.delr[0]
+z_bin = coords.loc['well']['z_coord'] // gwf.modelgrid.delz[0,0,0]
+print(x_bin)
+print(z_bin)
+
 # plot time series at each location --> plt.plot(hds[time, z, y(into page), x])
-plt.plot(hds[:, z_bin, 0, x_bin])
+plt.figure()
+for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
+    plt.plot(hds[:, int(z), 0, int(x)], label=name)
+plt.legend(loc='lower right')
 plt.show()
-'''
-raise Exception('AEJ breaks stuff.')
+
+print('Script Finished.')
+
+
+
 
 '''
 try:
