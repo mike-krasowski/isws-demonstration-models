@@ -58,7 +58,7 @@ plt.legend(loc='lower right')
 
 
 plt.show()
-
+plt.close('all')
 print('Script Finished.')
 
 

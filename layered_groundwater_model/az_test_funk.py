@@ -50,7 +50,7 @@ def plot_heads_and_concentrations(scenario=2, show_plots=True):
 
     if show_plots:
         plt.show()
-
+        plt.close('all')
     print('Function execution finished.')
 
 # Example usage:
