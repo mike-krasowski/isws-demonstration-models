@@ -28,7 +28,7 @@ import pandas as pd
 hds = gwf.output.head().get_alldata()
 ucn = gwt.output.concentration().get_alldata()
 
-print("grabbed data from ")
+print("grabbed data heads and concentration data ")
 
 # read in well csv --> pandas as pd --> pd.read_csv
 well = pd.read_csv('./inputs/well_info.csv')
