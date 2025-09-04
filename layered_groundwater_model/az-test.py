@@ -7,19 +7,27 @@ def vdir(n):
     for i in dir(n):
         print(i)
 
-file_path = r"./outputs/s1/"  # Replace with your actual file path
+file_path = r"./outputs/s2/"  # Replace with your actual file path
 
 mf = flopy.mf6.MFSimulation.load(
     sim_name="mfsim", #.nam",
     sim_ws=file_path,
     )
-gwf = mf.get_model("gwf_s1")
+gwf = mf.get_model("gwf_s2")
+#gwt = mf.get_model("gwt_s2")
 
-path2 = r".\outputs\s1\gwf_s1.hds"
+pathhds = r".\outputs\s2\gwf_s2.hds"
+pathucn = r".\outputs\s2\gwt_s2.ucn"  ####trying transport
 
 import flopy.utils.binaryfile as bf
 import pandas as pd
-hds = bf.HeadFile(path2).get_alldata() # (time, layer, row, column)
+hds = bf.HeadFile(pathhds).get_alldata() # (time, layer, row, column)
+print(hds)
+print("hds works, does ucn????")
+#ucn = bf.UcnFile(pathucn).get_alldata() # ???(time, layer, row, column)
+ucn = bf.UcnFile(pathucn, text='concentration', precision='auto', verbose=False).get_alldata()
+print(ucn)
+print("woooooooo")
 
 # read in well csv --> pandas as pd --> pd.read_csv
 well = pd.read_csv('./inputs/well_info.csv')
@@ -31,13 +39,27 @@ coords = well.set_index('type')
 x_bin = coords.loc['well']['x_coord'] // gwf.modelgrid.delr[0]
 z_bin = coords.loc['well']['z_coord'] // gwf.modelgrid.delz[0,0,0]
 
+
+#####plot for Headsfile
 # plot time series at each location --> plt.plot(hds[time, z, y(into page), x])
-plt.figure()
+plt.figure(1)
 for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
     plt.plot(hds[:, int(z), 0, int(x)], label=name)
 plt.xlabel('Time')
 plt.ylabel('Heads [cm]')
 plt.legend(loc='lower right')
+#plt.show()
+
+##########plot for UcnFIle
+# plot time series at each location --> plt.plot(ucn[time, z, y(into page), x])
+plt.figure(2)
+for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
+    plt.plot(ucn[:, int(z), 0, int(x)], label=name)
+plt.xlabel('Time')
+plt.ylabel('Concentrations [cm]')
+plt.legend(loc='lower right')
+
+
 plt.show()
 
 print('Script Finished.')
