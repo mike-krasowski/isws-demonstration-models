@@ -6,7 +6,7 @@ import flopy
 def vdir(n):
     for i in dir(n):
         print(i)
-
+#############pick scenario to run
 scenario = 2
 
 file_path = f"./outputs/s{scenario}/"  # Replace with your actual file path
