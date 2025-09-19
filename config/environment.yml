@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python=3.12 # tensorflow needs 3.9-3.12 (19 Sept 2025)
   - flopy
   - matplotlib
   - numpy
@@ -11,3 +12,5 @@ dependencies:
   - pip
   - pyyaml
   - shapely
+  - pip:
+      -tensorflow # surrogate addition

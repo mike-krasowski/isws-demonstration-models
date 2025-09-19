@@ -106,7 +106,7 @@ def run_toy_model(model_name=None):
     #%% ESTABLISH RIVER CELLS - WESTERN BOUNDARY ========================================
     #create list to store river stress period data
     stage_riv = np.cos( np.array(range(nper))*np.pi/2 ) + 7 # set west river stage to oscillate around 5 m
-    lake_stage = np.sin( np.array(range(nper))*np.pi/2 ) + 5.5
+    lake_stage = np.ones((nper,))*5.5 #np.sin( np.array(range(nper))*np.pi/2 ) + 5.5
     cond = 1  # set sediment conductance as 1 m^2/d
     rbot = 0  # set location of river bottom (set to top of model, 0 m)
 
@@ -114,8 +114,8 @@ def run_toy_model(model_name=None):
     riv_spd={}
     for t in range(nper):
         rivers = []
-        for i in range(1,nrow-1):
-            rivers.append([0, i, 0, stage_riv[t], cond, rbot])  # set left side as column of river cells
+        # for i in range(1,nrow-1):
+        #     rivers.append([0, i, 0, stage_riv[t], cond, rbot])  # set left side as column of river cells
 
         # also add river cells for "horseshoe lake"
         for i in range(int(np.floor(nrow/3)-2), int(np.floor(nrow/3)+2)+1):
@@ -132,7 +132,7 @@ def run_toy_model(model_name=None):
     wel_spd = {}
     # Create Single Well at center of domain with [lay, row, col, flux] list
     for t in range( nper ):
-        pumping_rate = -50 + 3*t  # in m^3/d, negative for pumping/positive for injection
+        pumping_rate = -100 + 10*t  # in m^3/d, negative for pumping/positive for injection
         well_1 = [0, 3*nrow/4, ncol/4, pumping_rate]
         wel_spd[t] = [well_1]
     # Create flopy wel object
