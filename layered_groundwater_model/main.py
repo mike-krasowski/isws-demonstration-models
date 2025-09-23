@@ -61,16 +61,25 @@ if os.path.exists(savepath):
 # make the outputs folder
 os.makedirs(savepath)
 
-# user inputs, user inputs, user inputs
+## =================================================================================
+## COMMON USER INPUTS - COMMON USER INPUTS - COMMON USER INPUTS - COMMON USER INPUTS
+## =================================================================================
+
+# how many cores to work in parallel
 max_workers = 9
 
+# which spreadsheet we would like to read our scenarios from
 spds_path = './inputs/scenarios_short3.xlsx'
+
+## =================================================================================
+## END COMMON USER INPUTS
+## =================================================================================
+
+# create excel file object to get the sheet names to then look at each sheet
 exfi = pd.ExcelFile(spds_path)
 scenarios = exfi.sheet_names
 
-# end user inputs, end user inputs, end user inputs
-
-# only two scenarios are constructed for now so only run those
+# only some scenarios are constructed for now so only run those
 scenarios = scenarios[:3]
 
 if __name__ == "__main__":
