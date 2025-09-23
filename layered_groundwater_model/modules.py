@@ -33,7 +33,7 @@ for tcolor in np.unique(topo_colors):
         N=2)
 
 colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
-atr_cmap = LinearSegmentedColormap.from_list('AlphaToRed', colors, N=100)
+atr_cmap = LinearSegmentedColormap.from_list('alpha_to_red', colors, N=100)
 
 def find_cells_within_polygon( polygon, gridx, gridy ):
     """
@@ -181,12 +181,35 @@ def determine_inside_indices(mf, polygons, axis=0, buffer=None):
     return list_of_in_idx
 
 def get_nodes(gwf, locs):
+    """
+    The purpose of this script is to get the nodes returned from the locations
+    :param gwf: flopy.mf6.ModflowGwf
+        flopy object for the flow model
+    :param locs: list or np.array
+        modpath locations of interest
+    :return nodes: list
+        the node numbers of the modpath locations
+    """
     nodes = []
     for k, i, j in locs:
         nodes.append(k * gwf.modelgrid.nrow * gwf.modelgrid.ncol + i * gwf.modelgrid.ncol + j)
     return nodes
 
 def run_the_models(sname, wiggle):
+    """
+    The purpose of this function is to build and run the model for an individual scenario
+    :param sname: str
+        the scenario name
+    :param wiggle: float
+        a random value by which to "wiggle" some of the parameter values to rerun the scenario in case it fails with the
+        baseline parameter values
+    :return success: boolean
+        a boolean which indicates whether the model solved correctly (True) or failed (False)
+    :return sim: flopy.mf6.modflow.mfsimulation
+        a fully built and run MODFLOW-6 simulation
+    :return nodes: np.array
+        the nodes of the modpath simulation returned for latter plotting
+    """
 
     # why do I have to do this here for pandas, but not for any other package.... they're all imported up top!
     import pandas as pd
@@ -209,18 +232,22 @@ def run_the_models(sname, wiggle):
 
     print('ISWS: starting model for scenario:', sname)
 
+    # import the schedule that will control the model timing and behavior
     spds_path = './inputs/scenarios_short3.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()
-
+    
+    # the stress period lengths from the schedule
     perlen = np.array(spd_schedule.end - spd_schedule.start)
-
 
     # define a model workspace
     sim_ws = './outputs/{}'.format(sname)
     if not os.path.exists(sname):
         os.makedirs(sname)
+
+    background_conc = 0
+    background_temp = 20 + (20 * wiggle)
 
     gwfname = 'gwf_' + sname
     
@@ -242,8 +269,11 @@ def run_the_models(sname, wiggle):
     ### ----------------------------- specify solver -----------------------------
 
     # copied from: https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-sagehen.html
-    nouter, ninner = 10000, 1000
-    hclose, rclose, relax = 1e-1, 1e-1, 0.97  # 3e-2, 3e-2, 0.97
+    nouter = 5000
+    ninner = 5000
+    outer_dvclose = 1e-3
+    inner_dvclose = 1e-3
+    relax = 0.97
 
     gwf = flopy.mf6.ModflowGwf(
         sim,
@@ -265,7 +295,7 @@ def run_the_models(sname, wiggle):
     nrow = 1
     ncol = 100
 
-    #  INITIALIZE DISCRETIZATION OBJECT
+    # INITIALIZE DISCRETIZATION OBJECT
     flopy.mf6.ModflowGwfdis(
         gwf,
         nlay=nlay,
@@ -346,7 +376,14 @@ def run_the_models(sname, wiggle):
     # coordinate CHD and DRN locations at the top of the model
     riv_spd = {0: []}
     drn_spd = {0: []}
-    chd_spd = {0: []}
+    chd_spd = {0: [], 20: [], 40: [], 60: [], 80: [], 100: []}
+    riv_cond = 2 +   (2 * wiggle)
+    drn_cond = 1e5 + (1e5 * wiggle)
+    riv_conc = 0
+    chd_conc = 0
+    riv_temp = background_temp * 1
+    chd_temp = 5.0 + (5.0 * abs(wiggle))
+
     for ccc in range(gwf.modelgrid.ncol):
 
         for lll in range(idomain.shape[0]):
@@ -354,30 +391,40 @@ def run_the_models(sname, wiggle):
                 break
 
         if ccc < 11:
-            riv_spd[0].append([(lll, 0, ccc),
-                               gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1,
-                               2,
-                               gwf.modelgrid.zcellcenters[lll, 0, ccc]])
+            riv_stage = gwf.modelgrid.zcellcenters[20, 0, ccc] + 0.1 + abs(wiggle)
+            riv_botm = gwf.modelgrid.zcellcenters[lll, 0, ccc] - abs(wiggle)
+            # cell id: (lay, row, col), river stage, river conductance, river bottom, aux (CONCENTRATION, TEMPERATURE)
+            riv_spd[0].append([(lll, 0, ccc), riv_stage, riv_cond, riv_botm, riv_conc, riv_temp])
         elif ccc <= 25:
             # do nothing
             pass
 
         elif ccc < 74:
-            drn_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc], 1e5])
+            # cell id (lay, row, col), drain elevation, drain conductance
+            drn_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc] + wiggle, drn_cond])
 
         else:
-            chd_spd[0].append([(lll, 0, ccc), gwf.modelgrid.zcellcenters[lll, 0, ccc]+wiggle])
+            # cell id (lay, row, col), constant head elevation, aux (CONCENTRATION, TEMPERATURE)
+            chd_elev = gwf.modelgrid.zcellcenters[lll, 0, ccc] + wiggle
+            chd_spd[0].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
+            chd_spd[20].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
+            chd_spd[40].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
+            chd_spd[60].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
+            chd_spd[80].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
+            chd_spd[100].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
 
     # RIVERS RIVERS RIVERS
     riv = flopy.mf6.ModflowGwfriv(
         gwf,
-        stress_period_data=riv_spd
+        stress_period_data=riv_spd,
+        auxiliary=['CONCENTRATION', 'TEMPERATURE']
     )
 
     # CONSTANT HEAD CONSTANT HEAD CONSTANT HEAD
     chd = flopy.mf6.ModflowGwfchd(
         gwf,
-        stress_period_data=chd_spd
+        stress_period_data=chd_spd,
+        auxiliary=['CONCENTRATION', 'TEMPERATURE']
     )
 
     # DRAINS DRAINS DRAINS
@@ -411,8 +458,9 @@ def run_the_models(sname, wiggle):
     well_info['col'] = well_column
 
     # WELLS WELLS WELLS
-    q_factor = 0.1
-    injection_conc = 100
+    q_factor = 0.1 + (0.1 * wiggle)
+    injection_conc = 100 + (100 * wiggle)
+    injection_temp = 5.0 + (5.0 * abs(wiggle))
     wel_spd = {}
     for sp in spd_schedule.index:
         wel_spd[sp] = []
@@ -427,31 +475,39 @@ def run_the_models(sname, wiggle):
                         # set the injection well concentration
                         wel_conc = injection_conc * spd_schedule[skey][sp]
 
+                        # set the injection well concentration
+                        wel_temp = injection_temp * spd_schedule[skey][sp]
+
                         # get the pumping rate
                         qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
 
                         # append into the dictionary
+                        # cell id: (lay, row, col), well flux, aux (CONCENTRATION), aux (TEMPERATURE)
                         wel_spd[sp].append(
-                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc])
+                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc, wel_temp])
 
                     else:
 
                         # set the injection well concentration
-                        wel_conc = 0
+                        wel_conc = background_conc
+
+                        # set the injection well temperature
+                        wel_temp = background_temp
 
                         # get the pumping rate
                         qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
 
                         # append into the dictionary
+                        # cell id: (lay, row, col), well flux, aux (CONCENTRATION), aux (TEMPERATURE)
                         wel_spd[sp].append(
-                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc])
+                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc, wel_temp])
 
     wel = flopy.mf6.ModflowGwfwel(
         gwf,
         print_input=True,
         print_flows=True,
         stress_period_data=wel_spd,
-        auxiliary="CONCENTRATION",
+        auxiliary=["CONCENTRATION", "TEMPERATURE"],
         save_flows=False,
         maxbound=well_info.shape[0] * 2,
         pname="WEL-1",
@@ -466,10 +522,7 @@ def run_the_models(sname, wiggle):
         saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
     )
 
-    nouter = 10000
-    ninner = 10000
-    outer_dvclose = 1e-3,
-    inner_dvclose = 1e-3,
+    # Instantiate Iterative model solution package for the flow model
     imsgwf = flopy.mf6.ModflowIms(
         sim,
         print_option="summary",
@@ -478,6 +531,7 @@ def run_the_models(sname, wiggle):
         outer_maximum=nouter,
         outer_dvclose=outer_dvclose,
         inner_dvclose=inner_dvclose,
+        filename="{}.ims".format("gwfsolver"),
     )
 
     sim.register_ims_package(imsgwf, [gwf.name])
@@ -549,7 +603,7 @@ def run_the_models(sname, wiggle):
     )
 
     # Instantiating MODFLOW 6 transport dispersion package
-    dsp_dispersivity = 0.1
+    dsp_dispersivity = 0.1 + (0.1 * abs(wiggle))
     dsp_dmcoef = 1e-6
     flopy.mf6.ModflowGwtdsp(
         gwt,
@@ -610,6 +664,7 @@ def run_the_models(sname, wiggle):
                         linger = True
                     for widx in well_info.index:
                         if ('well' in well_info.id[widx]) and (key[-1] == well_info.id[widx][-1]):
+                            # cell id (lay, row, col), concentration
                             cnc_spd[sp].append(
                                 [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), cnc_conc]
                             )
@@ -630,7 +685,9 @@ def run_the_models(sname, wiggle):
     )
 
     # initialize source sink mixing package
-    sourcerecarray = [("WEL-1", "AUX", "CONCENTRATION")]
+    sourcerecarray = [("WEL-1", "AUX", "CONCENTRATION"),
+                      ("CHD_0", "AUX", "CONCENTRATION"),
+                      ("RIV_0", "AUX", "CONCENTRATION")]
     flopy.mf6.ModflowGwtssm(
         gwt,
         sources=sourcerecarray,
@@ -655,9 +712,7 @@ def run_the_models(sname, wiggle):
     #     packagedata=pkgdata
     # )
 
-    # this is only needed if you want to use separate settings for the flow and transport models
-    hclose, rclose, relax = 1e-2, 1e-1, 0.97  # 3e-2, 3e-2, 0.97
-
+    # Instantiate Iterative model solution package for the tranport model
     imsgwt = flopy.mf6.ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -667,12 +722,11 @@ def run_the_models(sname, wiggle):
         # under_relaxation="NONE",
         inner_maximum=ninner,
         outer_maximum=nouter,
-        # inner_dvclose=hclose,
         # rcloserecord=rclose,
         # linear_acceleration="BICGSTAB",
         # scaling_method="NONE",
         # reordering_method="NONE",
-        # relaxation_factor=relax,
+        relaxation_factor=relax,
         filename="{}.ims".format("gwtsolver"),
     )
 
@@ -695,119 +749,258 @@ def run_the_models(sname, wiggle):
     #
     # gwt.name_file.save_flows = True
 
+    # ENERGY ENERGY ENERGY
+
+    gwename = gwf.name.replace('gwf', 'gwe')
+
+    # Instantiating MODFLOW 6 groundwater transport model
+    gwe = flopy.mf6.MFModel(
+        sim,
+        model_type="gwe6",
+        modelname=gwename,
+        model_nam_file="{}.nam".format(gwename)
+    )
+
+    # Instantiate Iterative model solution package for the energy model
+    imsgwe = flopy.mf6.ModflowIms(
+        sim,
+        print_option="SUMMARY",
+        complexity='complex',
+        outer_dvclose=outer_dvclose,
+        inner_dvclose=inner_dvclose,
+        # under_relaxation="NONE",
+        inner_maximum=ninner,
+        outer_maximum=nouter,
+        # rcloserecord=rclose,
+        # linear_acceleration="BICGSTAB",
+        # scaling_method="NONE",
+        # reordering_method="NONE",
+        relaxation_factor=relax,
+        filename="{}.ims".format("gwesolver"),
+    )
+
+    sim.register_ims_package(imsgwe, [gwe.name])
+
+    flopy.mf6.ModflowGweoc(
+        gwe,
+        budget_filerecord=f"{gwe.name}.cbc",
+        temperature_filerecord=f"{gwe.name}.ucn",
+        temperatureprintrecord=[("COLUMNS", gwf.modelgrid.ncol, "WIDTH", 15, "DIGITS", 6, "GENERAL")],
+        saverecord=[("TEMPERATURE", "LAST"), ("BUDGET", "LAST")],
+        printrecord=[("TEMPERATURE", "LAST"), ("BUDGET", "LAST")],
+    )
+
+    # Instantiate an structured discretization package
+    flopy.mf6.ModflowGwedis(
+        gwe,
+        nlay=gwf.modelgrid.nlay,
+        nrow=gwf.modelgrid.nrow,
+        ncol=gwf.modelgrid.ncol,
+        delr=gwf.modelgrid.delr,
+        delc=gwf.modelgrid.delc,
+        top=gwf.modelgrid.top,
+        botm=gwf.modelgrid.botm,
+        idomain=gwf.dis.idomain.array,
+        filename=f"{gwe.name}.dis",
+    )
+
+    # Instantiating MODFLOW 6 heat transport initial temperature
+    flopy.mf6.ModflowGweic(
+        gwe,
+        strt=background_temp,
+        pname="IC-gwe",
+        filename="{}.ic".format(gwe.name)
+    )
+
+    # Instantiating MODFLOW 6 heat transport advection package
+    scheme = "TVD"
+    flopy.mf6.ModflowGweadv(
+        gwe,
+        scheme=scheme,
+        pname="ADV-gwe",
+        filename="{}.adv".format(gwe.name)
+    )
+
+    # Instantiating MODFLOW 6 heat transport dispersion package
+    # if ktw != 0:
+    alpha_l = 0.0 + abs(wiggle)  # Longitudinal dispersivity ($m$)
+    ath1 = 1.0e9   # Transverse mechanical dispersivity ($m$)
+    ath2 = 1.0e9   # Transverse mechanical dispersivity ($m$)
+    ktw = 0.6      # Thermal conductivity of the fluid ($\dfrac{W}{m \cdot ^{\circ}C}$)
+    kts = 0.06667  # Thermal conductivity of the aquifer matrix (which is also the dry overburden material) ($\dfrac{W}{m \cdot ^{\circ}C}$)
+    flopy.mf6.ModflowGwecnd(
+        gwe,
+        alh=dsp_dispersivity,
+        ath1=dsp_dispersivity * 0.1,
+        ath2=dsp_dispersivity * 0.01,
+        ktw=ktw,
+        kts=kts,
+        pname="CND-gwe",
+        filename="{}.cnd".format(gwe.name),
+    )
+
+    # Instantiating MODFLOW 6 heat transport mass storage package (consider renaming to est)
+    rhow = 1000.0  # Density of water ($\frac{kg}{m^3}$) # 3282.296651
+    cpw = 5000.0  # Mass-based heat capacity of the fluid (($\dfrac{J}{kg \cdot $^{\circ}C}$))
+    rhos = 2000.0  # Density of the solid material ($\dfrac{kg}{m^3}$)
+    cps = 500.0  # Mass-based heat capacity of the solid material ($\dfrac{J}{kg \cdot $^{\circ}C}$)
+    prsity = gwf.sto.sy.array
+    flopy.mf6.ModflowGweest(
+        gwe,
+        porosity=prsity,
+        heat_capacity_solid=cps,
+        heat_capacity_water=cpw,
+        density_solid=rhos,
+        density_water=rhow,
+        pname="EST-gwe",
+        filename="{}.est".format(gwe.name),
+    )
+
+    # # Instantiating MODFLOW 6 constant temperature package
+    # # get locs of constant head cells
+    # ctp_spd = {1: []}
+    # for ccell in gwf.chd.stress_period_data.array[0]:
+    #     ctp_spd[1].append([ccell[0], 5.0, ])
+    #
+    # flopy.mf6.ModflowGwectp(
+    #     gwe,
+    #     save_flows=True,
+    #     maxbound=1,
+    #     stress_period_data=ctp_spd,
+    #     pname="CTP-gwe",
+    #     filename="{}.ctp".format(gwe.name)
+    #
+    # )
+
+    # Instantiating MODFLOW 6 source/sink mixing package for dealing with
+    # auxiliary temperature specified in WEL boundary package.
+    sourcerecarray = [("WEL-1", "AUX", "TEMPERATURE"),
+                      ("CHD_0", "AUX", "TEMPERATURE"),
+                      ("RIV_0", "AUX", "TEMPERATURE")]
+    flopy.mf6.ModflowGwessm(
+        gwe,
+        sources=sourcerecarray,
+        pname="SSM",
+        filename="{}.ssm".format(gwe.name)
+    )
+
+    # Instantiating MODFLOW 6 flow-transport exchange mechanism
+    flopy.mf6.ModflowGwfgwe(
+        sim,
+        exgtype="GWF6-GWE6",
+        exgmnamea=gwf.name,
+        exgmnameb=gwe.name,
+        filename=f"{gwf.name + '-' + gwe.name}.gwfgwe",
+    )
+
     # WRITE THE INPUTS
     sim.write_simulation()
 
-    # RUN THE FLOW AND TRANSPORT MODELS
+    # RUN THE FLOW, TRANSPORT, AND ENERGY MODELS
     success_mf, buff = sim.run_simulation(silent=False)
 
-    # MODPATH MODPATH MODPATH
-    mp_path = os.path.join(sim.sim_path, 'mp')
-    if not os.path.exists(mp_path):
-        os.makedirs(mp_path)
+    success_mp = None
+    nodes = None
+    if success_mf:
 
-    mp_locs = []
+        print('ISWS: starting MODPATH workflow')
 
-    for lll in range(gwf.modelgrid.nlay):
-        for rrr in range(gwf.modelgrid.nrow):
-            for ccc in range(gwf.modelgrid.ncol):
+        # MODPATH MODPATH MODPATH
+        mp_path = os.path.join(sim.sim_path, 'mp')
+        if not os.path.exists(mp_path):
+            os.makedirs(mp_path)
 
-                if idomain[lll, ccc] == 1:
+        mp_locs = []
 
-                    if (lll % 5 == 0) and (ccc % 5 == 0) and np.random.choice([True, True, True, False, False]):
+        for lll in range(gwf.modelgrid.nlay):
+            for rrr in range(gwf.modelgrid.nrow):
+                for ccc in range(gwf.modelgrid.ncol):
 
-                        lllw = lll + np.random.choice([-2, -1, 0, 1, 2])  # [-2, -1, 0, 1, 2]
-                        if lllw >= gwf.modelgrid.nlay:
-                            lllw = gwf.modelgrid.nlay - 1
-                        elif lllw < 0:
-                            lllw = 0
+                    if idomain[lll, ccc] == 1:
 
-                        rrrw = rrr + np.random.choice([-2, -1, 0, 1, 2])
-                        if rrrw >= gwf.modelgrid.nrow:
-                            rrrw = gwf.modelgrid.nrow - 1
-                        elif rrrw < 0:
-                            rrrw = 0
+                        if (lll % 5 == 0) and (ccc % 5 == 0) and np.random.choice([True, True, True, False, False]):
 
-                        cccw = ccc + np.random.choice([-2, -1, 0, 1, 2])
-                        if cccw >= gwf.modelgrid.ncol:
-                            cccw = gwf.modelgrid.ncol - 1
-                        elif cccw < 0:
-                            cccw = 0
+                            lllw = lll + np.random.choice([-2, -1, 0, 1, 2])  # [-2, -1, 0, 1, 2]
+                            if lllw >= gwf.modelgrid.nlay:
+                                lllw = gwf.modelgrid.nlay - 1
+                            elif lllw < 0:
+                                lllw = 0
 
-                        mp_locs.append((int(lllw), int(rrrw), int(cccw)))
+                            rrrw = rrr + np.random.choice([-2, -1, 0, 1, 2])
+                            if rrrw >= gwf.modelgrid.nrow:
+                                rrrw = gwf.modelgrid.nrow - 1
+                            elif rrrw < 0:
+                                rrrw = 0
 
-    # for sp, entry in chd_spd.items():
-    #     for ch in entry:
-    #         mp_locs.append(ch[0])
+                            cccw = ccc + np.random.choice([-2, -1, 0, 1, 2])
+                            if cccw >= gwf.modelgrid.ncol:
+                                cccw = gwf.modelgrid.ncol - 1
+                            elif cccw < 0:
+                                cccw = 0
 
-    # mp_locs.append((20, 0, 95))
-    # mp_locs.append((25, 0, 95))
-    # mp_locs.append((30, 0, 95))
-    # mp_locs.append((35, 0, 95))
-    # mp_locs.append((40, 0, 95))
-    # mp_locs.append((45, 0, 95))
+                            mp_locs.append((int(lllw), int(rrrw), int(cccw)))
 
-    nodes = gwf.modelgrid.get_node(mp_locs)
-    
-    # create basic forward tracking modpath simulation
-    mp = flopy.modpath.Modpath7(
-        modelname=gwf.name.replace('gwf', 'mp'),
-        flowmodel=gwf,
-        model_ws=mp_path,
-        exe_name='../bin/win/mpath7.exe',
-    )
+        nodes = gwf.modelgrid.get_node(mp_locs)
 
-    flopy.modpath.Modpath7Bas(mp, porosity=gwf.sto.sy.array)  # defaultiface=defaultiface)
+        # create basic forward tracking modpath simulation
+        mp = flopy.modpath.Modpath7(
+            modelname=gwf.name.replace('gwf', 'mp'),
+            flowmodel=gwf,
+            model_ws=mp_path,
+            exe_name='../bin/win/mpath7.exe',
+        )
 
-    cd = flopy.modpath.CellDataType(
-        drape=0,  # particles added at top of cell (no drape), 1 means they fall to active cell
-        rowcelldivisions=1,
-        columncelldivisions=1,
-        layercelldivisions=1,
-    )
+        flopy.modpath.Modpath7Bas(mp, porosity=gwf.sto.sy.array)  # defaultiface=defaultiface)
 
-    pd = flopy.modpath.NodeParticleData(
-        subdivisiondata=[cd],
-        nodes=nodes
-    )
+        cd = flopy.modpath.CellDataType(
+            drape=0,  # particles added at top of cell (no drape), 1 means they fall to active cell
+            rowcelldivisions=1,
+            columncelldivisions=1,
+            layercelldivisions=1,
+        )
 
-    # release releasedata[0] times starting at releasedata[1] and do so every releasedata[2] stress periods
-    pg = flopy.modpath.ParticleGroupNodeTemplate(
-        particlegroupname='PG1',
-        # filename=None,
-        releasedata=[gwf.nper//10, 1, 10],
-        particledata=pd)
+        pd = flopy.modpath.NodeParticleData(
+            subdivisiondata=[cd],
+            nodes=nodes
+        )
 
-    pgs = [pg]
-    denominator = 5
-    number_of_times_particles_are_introduced = np.floor(gwf.nper / denominator).astype(int)
-    time_between_introduction = denominator * 1
-    # release how many times, with how long between releases
-    timepointdata = [number_of_times_particles_are_introduced,
-                     [time_between_introduction] * number_of_times_particles_are_introduced]
-    timepointdata = list(spd_schedule.loc[1:, 'start']) + [spd_schedule.loc[len(spd_schedule) - 1, 'end']]
+        # release releasedata[0] times starting at releasedata[1] and do so every releasedata[2] stress periods
+        pg = flopy.modpath.ParticleGroupNodeTemplate(
+            particlegroupname='PG1',
+            # filename=None,
+            releasedata=[gwf.nper//10, 1, 10],
+            particledata=pd)
 
-    mpsim = flopy.modpath.Modpath7Sim(
-        mp,
-        simulationtype="combined",
-        trackingdirection="forward",
-        weaksinkoption="pass_through",
-        weaksourceoption="pass_through",
-        budgetoutputoption="summary",
-        # referencetime=[0, 0, 0.9],
-        # timepointdata=[len(timepointdata), timepointdata],
-        # zonedataoption="on",
-        # zones=zone_maps,
-        particlegroups=pgs,
-    )
+        pgs = [pg]
+        denominator = 5
+        number_of_times_particles_are_introduced = np.floor(gwf.nper / denominator).astype(int)
+        time_between_introduction = denominator * 1
+        # release how many times, with how long between releases
+        timepointdata = [number_of_times_particles_are_introduced,
+                         [time_between_introduction] * number_of_times_particles_are_introduced]
+        timepointdata = list(spd_schedule.loc[1:, 'start']) + [spd_schedule.loc[len(spd_schedule) - 1, 'end']]
 
-    # write modpath datasets
-    mp.write_input()
+        mpsim = flopy.modpath.Modpath7Sim(
+            mp,
+            simulationtype="combined",
+            trackingdirection="forward",
+            weaksinkoption="pass_through",
+            weaksourceoption="pass_through",
+            budgetoutputoption="summary",
+            # referencetime=[0, 0, 0.9],
+            # timepointdata=[len(timepointdata), timepointdata],
+            # zonedataoption="on",
+            # zones=zone_maps,
+            particlegroups=pgs,
+        )
 
-    # run modpath
-    success_mp, buff = mp.run_model(silent=True, report=True)
-    for line in buff:
-        print(line)
+        # write modpath datasets
+        mp.write_input()
+
+        # run modpath
+        success_mp, buff = mp.run_model(silent=True, report=True)
+        for line in buff:
+            print(line)
 
     success = False
     if success_mf and success_mp:
@@ -817,8 +1010,23 @@ def run_the_models(sname, wiggle):
 
     return success, sim, nodes
 
-
-def make_the_animation(sim, nodes):
+def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
+    """
+    The purpose of this function is to create and save the animation of model results. It does this by plotting the
+    results frame-by-frame via standard matplotlib plotting.
+    :param sim: flopy.mf6.modflow.mfsimulation
+        a fully built and run MODFLOW-6 simulation
+    :param nodes: np.array
+        the nodes of the modpath simulation returned for latter plotting
+    :param wiggle: float
+        a random value by which to "wiggle" some of the parameter values to rerun the scenario in case it fails with the
+        baseline parameter values
+    :param parameter: str
+        a string which indicates which model result will be plotted for the animation choices are 
+        concentration(s), temperature(s)
+    :return sim: flopy.mf6.modflow.mfsimulation
+        a fully built and run MODFLOW-6 simulation
+    """
 
     # animation building will go here and it will be built using the scd variable from above
     savepath = './outputs/animations'
@@ -830,9 +1038,12 @@ def make_the_animation(sim, nodes):
 
     names = list(sim._models.keys())
 
+    # intialize the model objects for later use
     gwf = sim.get_model(names[0])
     gwt = sim.get_model(names[1])
+    gwe = sim.get_model(names[2])
 
+    # the model naming structure means this should always work (e.g., gwf_s2)
     sname = gwf.name[-2:]
 
     # import the geometries of the model (made by hand measurements of the table-top model
@@ -845,44 +1056,72 @@ def make_the_animation(sim, nodes):
 
         topopoly[id] = Polygon([(xxx, zzz) for xxx, zzz in zip(feature.x_coord, feature.z_coord)])
 
+    # find which cells are in the topology polygons
     in_idx_list = determine_inside_indices(gwf, list(topopoly.values()), axis=1, buffer=None)
-
-    print('ISWS: gwf.name:', gwf.name)
 
     print('ISWS: starting animation for scenario:', sname)
 
+    # initialize the figure
     fig, ax = plt.subplots()
 
+    # import the schedule that will control the model timing and behavior
     spds_path = './inputs/scenarios_short3.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()
 
-    # load heads
+    # load heads for later plotting (potentiometric surface/water table at least!)
     fname = os.path.join(gwf.model_ws[:-1], gwf.name + '.hds')
     head_obj = flopy.utils.binaryfile.HeadFile(fname)
     heads = head_obj.get_alldata()
     head_obj.close()
 
     # swap the inactive value with np.nan
-    heads = np.where(heads>=1e30, np.nan, heads)
+    heads = np.where(heads >= 1e30, np.nan, heads)
 
-    # load concentrations
-    concs = gwt.output.concentration().get_alldata()
+    # now use "parameter" to identify which outputs we are interested in and process the accordingly
+    if parameter.lower() in ['head', 'heads']:
 
-    input_conc = 100
-    concs = np.where(concs > input_conc, np.nan, concs)
+        # take them as they exist for plotting as array
+        model_outputs = heads * 1
 
-    # load paths
+    elif parameter.lower() in ['concentration', 'concentrations']:
+
+        # load concentrations
+        concs = gwt.output.concentration().get_alldata()
+
+        # this is hard coded... forgive me! - mpk
+        input_conc = 100 + (100 * wiggle)
+
+        # we do not want to consider inactive values in our assessment, swap with np.nan
+        model_outputs = np.where(concs > input_conc * 10, np.nan, concs)
+        
+        # occasionally, the model will produce petty negative numbers and skew the color ramp. swap with zero.
+        model_outputs = np.where(model_outputs < 0.000001, 0, model_outputs)
+
+    elif parameter.lower() in ['temperature', 'temperatures']:
+
+        # load temperatures
+        temps = gwe.output.temperature().get_alldata()
+
+        # this is hard coded to match above, forgive me! - mpk
+        input_temp = 100
+        
+        # again, we do not want to consider inactive values in our assessment
+        model_outputs = np.where(temps > input_temp, np.nan, temps)
+
+    else:
+        raise Exception("ISWS: EXCEPTION: parameter unrecognized")
+
+    # load pathlines using the nodes we're interested in
     fpth = os.path.join(sim.sim_path, 'mp', f"mp_{sname}.mppth")
     pathline_file = flopy.utils.PathlineFile(fpth)
     pathlines = pathline_file.get_destination_pathline_data(dest_cells=nodes)  # to_recarray=True
 
-    # raise Exception
-
+    # we will need this unique datatype later when we recreate it
     void_dtype = pathlines[0][0].dtype
 
-    # pre-process the path lines
+    # pre-process the path lines to create a cute and effective sense of "flow" in the animation
     pathlines_by_sp = {}
     pathlines_by_spv = {}
     for sp in spd_schedule.index:
@@ -905,7 +1144,7 @@ def make_the_animation(sim, nodes):
                     pathlines_by_spv[sp][-1] = np.append(pathlines_by_spv[sp][-1], pvoid)
 
     # also accepts .gif format which is helpful for filling out the readme with examples
-    with vid.saving(fig, os.path.join(savepath, '{}.mp4'.format(sname)), 600):
+    with vid.saving(fig, os.path.join(savepath, '{}.mp4'.format(sname)), 100):
 
         for sp in range(gwf.nper):
 
@@ -917,8 +1156,10 @@ def make_the_animation(sim, nodes):
                                                  line={'Row': 0},
                                                  ax=ax)
 
+            # plot gridlines
             xsec_r.plot_grid(linewidths=0.1, color='black', zorder=10000)
 
+            # plot the distinct topologies using the custom colormaps created at the top
             for pidx, (id, poly) in enumerate(topopoly.items()):
 
                 lith_array = in_idx_list[pidx]
@@ -939,19 +1180,22 @@ def make_the_animation(sim, nodes):
                 else:
                     print('ruh roh!')
 
-            # plot wells
+            # plot wells and highlight them when active
             well_info = pd.read_csv('./inputs/well_info.csv')
 
             for widx in well_info.index:
                 wid = well_info.id[widx]
                 if wid in list(spd_schedule.keys()):
                     if spd_schedule[wid][sp] != 0:
+                        # bright red
                         wcolor = (1, 0, 0, 0.75)
                     else:
+                        # semi-transparent white
                         wcolor = (1, 1, 1, 0.5)
                 else:
                     wcolor = (1, 1, 1, 0.5)
 
+                # coordinates of where the wells will be drawn
                 w_x1 = well_info.x_coord[widx]
                 w_z1 = well_info.z_coord[widx]
                 w_z2 = well_info.screen_top[widx]
@@ -961,7 +1205,18 @@ def make_the_animation(sim, nodes):
 
                 ax.plot([w_x1, w_x1],[w_z1, w_z2], color=wcolor, linewidth=2)
 
-            xsec_r.plot_array(concs[sp], cmap=atr_cmap, zorder=5000)
+            if parameter.lower() in ['concentration', 'concentrations']:
+                # plot the model data appropriately
+                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap=atr_cmap, zorder=5000)
+            elif parameter.lower() in ['head', 'heads']:
+                # plot the model data appropriately
+                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
+            elif parameter.lower() in ['temperature', 'temperatures']:
+                # plot the model data appropriately
+                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
+
+            # set the colormap limits
+            x_data_plot.set_clim(np.nanmin(model_outputs), np.nanmax(model_outputs))
 
             # plot pathlines
             if sp >= 1:
@@ -970,7 +1225,7 @@ def make_the_animation(sim, nodes):
                         ax.plot(pthl[0], pthl[2], color='cornflowerblue', lw=0.75, zorder=1000)
                         # counter += 1
 
-            # plot potentiometric surface
+            # plot potentiometric surface as the head value at the top of the active domain in each column
             pot_surf = np.zeros(heads.shape[3])
             for ccc in range(heads.shape[3]):
 
@@ -978,9 +1233,9 @@ def make_the_animation(sim, nodes):
                     if gwf.dis.idomain.array[lll, 0, ccc] == 1:
                         break
 
-
                 pot_surf[ccc] = np.nanmax(heads[sp, lll, 0, ccc])
 
+            # plot the poteniometric surface as a line acrosss the top of the model
             ax.plot(gwf.modelgrid.xcellcenters.flatten(), pot_surf, lw=1.25, color='cornflowerblue')
 
             # figure finagling
@@ -988,18 +1243,11 @@ def make_the_animation(sim, nodes):
 
             ax.axis('equal')
             ax.axis('off')
-
             fig.tight_layout()
-
-
-            # fig.legend(handles=hdls, loc='upper left', bbox_to_anchor=(0.81, 0.62), title='Concentration, (ppb)')
-            # set super title for figure
-            # fig.suptitle('End of MF Stress Period {}'.format(sp))
 
             # grab the figure before closing it
             vid.grab_frame()
             # clear the axes?
-
             ax.clear()
 
         # finish making movie?

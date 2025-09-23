@@ -24,6 +24,16 @@ import time
 from modules import *
 
 def main(name):
+    """
+    The purpose of this function is to coordinate running an individual scenario and constructing its animation in a
+    single function that can be parallelized. The "wiggle" is being applied because there is some convergence
+    sensitivity to small changes in input parameters. "Wiggling" model parameters ensures we get a solution for each
+    scenario. This does mean the parameters between scenarios aren't necessarily identical.
+    :param name: str
+        the name of the scenario. this will also be use as the simulation/model name
+    :return: list
+        two element list containing the simulation in position 0 and the runtime in position 1
+    """
 
     start_time = time.time()
 
@@ -34,7 +44,7 @@ def main(name):
         success, sim, nodes = run_the_models(name, wiggle)
         wiggle = random.choice([1,-1]) * random.random() * 0.1
 
-    sim = make_the_animation(sim, nodes)
+    sim = make_the_animation(sim, nodes, wiggle, parameter='concentration')
 
     return [sim, time.time() - start_time]
 
@@ -58,9 +68,10 @@ spds_path = './inputs/scenarios_short3.xlsx'
 exfi = pd.ExcelFile(spds_path)
 scenarios = exfi.sheet_names
 
-scenarios = scenarios[:2]
-
 # end user inputs, end user inputs, end user inputs
+
+# only two scenarios are constructed for now so only run those
+scenarios = scenarios[:3]
 
 if __name__ == "__main__":
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
