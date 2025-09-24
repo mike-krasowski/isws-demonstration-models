@@ -18,6 +18,18 @@ def vdir( var ):
 
 #%% INITIALIZE IMPORTANT DIRECTORIES AND THE MODEL OBJECT ========================================
 def run_toy_model(model_name=None):
+    """
+    Function runs a simple toy MODFLOW-NWT model, with several RIV cells and a well.
+
+    Parameters
+    ----------
+    model_name - str that defines the name of the model
+
+    Returns
+    -------
+    None.
+
+    """
     # define the model name
     if model_name == None:
         model_name = "toy-Model"
@@ -133,8 +145,9 @@ def run_toy_model(model_name=None):
     # Create Single Well at center of domain with [lay, row, col, flux] list
     for t in range( nper ):
         pumping_rate = -100 + 10*t  # in m^3/d, negative for pumping/positive for injection
-        well_1 = [0, 3*nrow/4, ncol/4, pumping_rate]
-        wel_spd[t] = [well_1]
+        well_1 = [0, 3*nrow/4,   ncol/4, pumping_rate]
+        # well_2 = [0, 3*nrow/4, 3*ncol/4, pumping_rate/3]
+        wel_spd[t] = [well_1] #, well_2]
     # Create flopy wel object
     wel = flopy.modflow.ModflowWel(model=m, stress_period_data=wel_spd)
 

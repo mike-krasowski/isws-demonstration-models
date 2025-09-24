@@ -20,15 +20,22 @@ def vdir(var):
 import flopy.utils.binaryfile as bf
 hds = bf.HeadFile(os.path.join(mf.model_ws, mf.name+'.hds')).get_alldata()
 
-# Parameters to train the surrogate model on:
-# >> time
-# >> location - x, y, z
-# >> distance to nearest well? --> nearest 5 wells?
-# >> pumping rate of nearest well? --> nearest 5 wells?
-# >> distance to nearest surface water?
-# >> elevation of surface water?
-
 def xyzcellcenters_3d(mf):
+    """
+    Calculate 3D np.arrays of x-, y-, z- coodinate locations for each model cell node
+
+    Parameters
+    ----------
+    mf - MODFLOW-NWT model object
+
+    Returns
+    -------
+    xmesh - np.array of shape (layers, rows, columns), x-coordinate locations of model cell nodes
+
+    ymesh - np.array of shape (layers, rows, columns), y-coordinate locations of model cell nodes
+
+    zzz - np.array of shape (layers, rows, columns), z-elevations of model cell nodes
+    """
     xxx, yyy, zzz = mf.modelgrid.xyzcellcenters
     xmesh = np.ones(zzz.shape)*-999
     ymesh = np.ones(zzz.shape)*-999
@@ -39,6 +46,28 @@ def xyzcellcenters_3d(mf):
     return xmesh, ymesh, zzz
 
 def find_min_dist_and_value(mf, pkg_spd, key='stage'):
+    """
+    Calculates distance of each model cell to the nearest instance of a particular package cell (e.g., wel,
+    riv) in the model. Also, returns the pertinent values (e.g., 'stage',  'flux') for that nearest package cell.
+
+    Parameters
+    ----------
+    mf - MODFLOW-NWT model object
+
+    pkg_spd - np.recarray, stress period data for a specified MODFLOW-NWT package (e.g., RIV, WEL, etc.)
+
+    key - str, field/key for the np.recarray (`pkg_spd`) which denotes the pertinent simulated data to obtain from
+    the model object.
+
+    Returns
+    -------
+    dist - np.array of shape (layers, rows, columns), minimum distance from each cell to the nearest cell using the
+    desired MF package (e.g., wel, riv)
+
+    value - np.array of shape (layers, rows, columns), the pertinent (i.e., coordinated by key) value of the nearest
+    package cell to each model cell
+
+    """
     # package locations
     idx = (pkg_spd['k'], pkg_spd['i'], pkg_spd['j'])
     # model cell centers in 3d arrays
@@ -71,12 +100,22 @@ for t in range(mf.nper):
     riv = mf.riv.stress_period_data[t]
     riv_dist, riv_stage = find_min_dist_and_value(mf, riv, key='stage')
 
+    ### RECHARGE INFORMATION
+    rch = mf.rch.rech.array[t]
+    rch_stor = np.zeros((xxx.shape))
+    rch_stor[0,:] = rch[0]
+
     # create data frame of the current stress period
     data = pd.DataFrame(
                 {'time': np.ones((xxx.size,))*t,
                 'X': xxx.reshape(-1),
                 'Y': yyy.reshape(-1),
                 'Z': zzz.reshape(-1),
+                # 'K_h': mf.upw.hk.array.reshape(-1),
+                # 'K_v': mf.upw.vka.array.reshape(-1),
+                # 'Ss': mf.upw.ss.array.reshape(-1),
+                # 'Sy': mf.upw.sy.array.reshape(-1),
+                # 'Rech': rch_stor.reshape(-1),
                 'well_dist': wel_dist.reshape(-1),
                 'well_flux': wel_Q.reshape(-1),
                 'sw_dist': riv_dist.reshape(-1),
@@ -92,7 +131,7 @@ for t in range(mf.nper):
 df.reset_index(drop=True, inplace=True)
 mra = df.to_numpy() # MODFLOW results array
 
-# remove all inactive heads
+# keep only the heads of "active" cells
 mra = mra[np.where(mra[:,-1] >= -999)]
 
 
@@ -187,24 +226,6 @@ for sp in np.unique(mra[:,0]):
 
 
 
-
-
-
-# Next steps:
-# 1. divide into training and validation datasets
-# 2. apply neural network --> TensorFlow? PyTorch?
-
 # Big Picture Next Steps:
 # 1. get ANN to reproduce model results
 # 2. can we modify inputs to ANN to predict model results?
-
-
-
-
-
-
-
-
-
-
-
