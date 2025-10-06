@@ -75,7 +75,6 @@ for ppp, result in enumerate(results):
     func_time += result[1]
 
 # plot heads and concentrations of all wells in the model
-from az_test_funk import plot_heads_and_concentrations_at_wells
 plot_heads_and_concentrations_at_wells(scenario=2)
 
 print('ISWS: the WHOLE script took: {} mins with {} mins of function time'.format(
