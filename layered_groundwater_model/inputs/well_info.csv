@@ -1,0 +1,15 @@
+﻿id,type,x_coord,z_coord,screen_top,screen_bottom
+well_1,well,48.7,29.8,10.4,1.3
+well_2,well,46.5,29.8,14.5,
+well_3,well,43.85,29.8,20.9,
+well_4,well,19.75,29.8,21.6,
+well_5,well,18.2,29.8,17.5,
+well_6,well,16.5,29.8,11.3,
+well_7,well,14.9,29.8,7.7,3
+well_8,well,9.15,24.7,10.4,
+well_9,well,7.25,24.7,6.8,1.6
+septic_1,source,31.55,29.8,25.3,
+septic_2,source,32.15,29.8,25.3,
+septic_3,source,32.85,29.8,25.3,
+septic_4,source,33.45,29.8,25.3,
+UST,source,38.45,29.8,24.9,
