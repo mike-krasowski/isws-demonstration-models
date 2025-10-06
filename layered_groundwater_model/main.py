@@ -58,7 +58,8 @@ spds_path = './inputs/scenarios_short3.xlsx'
 exfi = pd.ExcelFile(spds_path)
 scenarios = exfi.sheet_names
 
-scenarios = scenarios[:2]
+# running and plotting only "Scenario 2"
+scenarios = [ scenarios[1] ]
 
 # end user inputs, end user inputs, end user inputs
 
@@ -72,6 +73,10 @@ for ppp, result in enumerate(results):
 
     sims.append(result[0])
     func_time += result[1]
+
+# plot heads and concentrations of all wells in the model
+from az_test_funk import plot_heads_and_concentrations_at_wells
+plot_heads_and_concentrations_at_wells(scenario=2)
 
 print('ISWS: the WHOLE script took: {} mins with {} mins of function time'.format(
     round((time.time() - start_time)/60, 2),

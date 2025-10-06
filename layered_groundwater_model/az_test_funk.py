@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import flopy
 import pandas as pd
 
-def plot_heads_and_concentrations(scenario=2, show_plots=True):
+def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True):
     """
     Load MODFLOW 6 simulation data and plot head and concentration time series
     for wells defined in a CSV file.
