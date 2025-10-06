@@ -233,7 +233,7 @@ def run_the_models(sname, wiggle):
     print('ISWS: starting model for scenario:', sname)
 
     # import the schedule that will control the model timing and behavior
-    spds_path = './inputs/scenarios_short3.xlsx'
+    spds_path = 'inputs/scenarios.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()
@@ -243,8 +243,8 @@ def run_the_models(sname, wiggle):
 
     # define a model workspace
     sim_ws = './outputs/{}'.format(sname)
-    if not os.path.exists(sname):
-        os.makedirs(sname)
+    if not os.path.exists(sim_ws):
+        os.makedirs(sim_ws)
 
     background_conc = 0
     background_temp = 20 + (20 * wiggle)
@@ -1065,7 +1065,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     fig, ax = plt.subplots()
 
     # import the schedule that will control the model timing and behavior
-    spds_path = './inputs/scenarios_short3.xlsx'
+    spds_path = 'inputs/scenarios.xlsx'
     exfi = pd.ExcelFile(spds_path)
     spd_schedule = exfi.parse(sname)
     exfi.close()

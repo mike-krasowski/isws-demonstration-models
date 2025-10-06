@@ -69,7 +69,7 @@ os.makedirs(savepath)
 max_workers = 9
 
 # which spreadsheet we would like to read our scenarios from
-spds_path = './inputs/scenarios_short3.xlsx'
+spds_path = 'inputs/scenarios.xlsx'
 
 ## =================================================================================
 ## END COMMON USER INPUTS
