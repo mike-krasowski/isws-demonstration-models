@@ -26,9 +26,9 @@ RUN apt-get update && apt-get install -y wget unzip ffmpeg && \
 
 
 # Make port 8889 available to the world outside this container
-EXPOSE 80
+EXPOSE 85
 
 # Run Jupyter Notebook when the container launches
-CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=80", "--no-browser", "--allow-root"]
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=85", "--no-browser", "--allow-root"]
 
 # CMD ["python", "main_lx.py"]
