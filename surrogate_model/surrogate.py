@@ -179,7 +179,10 @@ test = tf.keras.callbacks.EarlyStopping(
     start_from_epoch=0
 )
 
+import time
+start = time.time()
 ann.fit(train_x, train_y, epochs=30, callbacks=test)
+print(f'Training time elapsed {start-time.time()}')
 print('****************\n'+'ANN Evaluation...')
 ann.evaluate(test_x, test_y)
 
