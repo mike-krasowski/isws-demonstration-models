@@ -173,6 +173,21 @@ success, mfoutput = m.run_model(pause=False, report=True)
 if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
+#extract binary data from head file
+times   = [perlen[0],perlen[0]+perlen[1],perlen[0]+perlen[1]+perlen[2]] #extract times at end of each stress period
+head    = {} #create dictionary to store head data at end of each stress period
+frf     = {} #create dictionary to store flows through right cell face at end of each stress period
+fff     = {} #create dictionary to store flows through front cell face at end of each stress period
+headobj = flopy.utils.binaryfile.HeadFile(save_path+modelname+'.hds') #get head data as python object
+budgobj = flopy.utils.binaryfile.CellBudgetFile(save_path+modelname+'.cbc') #get flow data as python object
+
+#get data from python objects
+for stress_per, time in enumerate(times): #iterate through times at end of each stress period
+    head['sp%s'%(stress_per)] = headobj.get_data(totim=time) #append heads to head list for ea stress per
+    frf['sp%s'%(stress_per)] = budgobj.get_data(text='FLOW RIGHT FACE',totim=time) #append right face flow to frf list for ea stress per
+    fff['sp%s'%(stress_per)] = budgobj.get_data(text='FLOW FRONT FACE',totim=time) #append front face flow to fff list for ea stress per
+
+
 # plot results for all stress periods
 for i in range(len(times)):
     plt.figure(figsize=(9, 9))  # create 10 x 10 figure
