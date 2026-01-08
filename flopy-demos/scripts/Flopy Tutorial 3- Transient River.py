@@ -222,16 +222,15 @@ X, Y = np.meshgrid(X, Y)
 #create a figure for every time
 for i in range(len(times)):
     #create 3d figure
-    fig_3d = plt.figure(figsize=(12,5)) #create a figure instance
-    ax = fig_3d.gca(projection='3d') #set an axes with 3d properties
+    fig_3d = plt.figure().add_subplot(projection='3d')
     Z = np.flipud(head['sp%s'%i][0]) #head matrix is flipped to display properly
 
     #create surface and labels
-    surf = ax.plot_surface(X,Y,Z, cmap = plt.cm.coolwarm, linewidth=0, antialiased=False, label='head') #plot head surface
-    fig_3d.colorbar(surf,shrink=0.5,aspect=5).set_label('Head (m)',fontsize=10,fontweight='bold') #set colorbar
-    ax.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
-    ax.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
-    ax.set_title('Head Surface: Stress-Period %s'%(i+1), fontsize=15, fontweight='bold')
+    surf = fig_3d.plot_surface(X,Y,Z, cmap = plt.cm.coolwarm, linewidth=0, antialiased=False, label='head') #plot head surface
+    plt.colorbar(surf,shrink=0.5,aspect=5).set_label('Head (m)',fontsize=10,fontweight='bold') #set colorbar
+    fig_3d.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
+    fig_3d.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
+    fig_3d.set_title('Head Surface: Stress-Period %s'%(i+1), fontsize=15, fontweight='bold')
     plt.show()
 
 #plot a time series at cell left of river
