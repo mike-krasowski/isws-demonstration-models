@@ -10,7 +10,8 @@ modelname  = "my_pumping_model"
 # path where files created for model run are to be saved
 save_path  = ('./outputs/2_Pumping_SS/')
 # points to the directory where the MODFLOW 2005 executable sits
-exe_path   = ('./modflowdir/mf2005.exe')
+# exe_path   = ('./modflowdir/mf2005.exe')
+exe_path  = ("../../bin/win/mf2005.exe")
 
 m = flopy.modflow.Modflow(modelname,
                           exe_name = exe_path,

@@ -1,11 +1,13 @@
 import flopy
 import numpy as np
+import matplotlib as mp; mp.use("TkAgg")
 import matplotlib.pyplot as plt
-import matplotlib as mp
+
 
 modelname = "my_model"
 save_pth  = ('./outputs/1_SS_Confined/')
-exe_path  = ("./modflowdir/mf2005.exe")
+# exe_path  = ("./modflowdir/mf2005.exe")
+exe_path  = ("../../bin/win/mf2005.exe")
 
 m = flopy.modflow.Modflow(modelname,
                           exe_name = exe_path,
@@ -76,7 +78,7 @@ plt.legend(handles=[mp.patches.Patch(color='blue',label='Const. Head',ec='black'
                    mp.patches.Patch(color='white',label='Active Cell',ec='black'),
                    mp.patches.Patch(color='black',label='Inactive Cell',ec='black')],
                    bbox_to_anchor=(1.5,1.0))
-plt.show(modelmap)
+plt.show()
 
 #define horizontal hydraulic conductivity
 hk = np.ones((nlay,nrow,ncol), dtype=np.float32)
@@ -134,14 +136,13 @@ plt.xlabel('Lx (m)',fontsize = 14)
 plt.ylabel('Ly (m)',fontsize = 14)
 plt.title('Steady-State Model, Flow(m^3/d) and Head(m) Results', fontsize = 15, fontweight = 'bold')
 plt.colorbar(head_contours,aspect=5)
-plt.show(modelmap)
+plt.show()
 
 #import 3d axes toolkit from matplotlib
 from mpl_toolkits.mplot3d import Axes3D
 
 #create 3d figure
-fig_3d = plt.figure(figsize=(12,5))
-ax = fig_3d.gca(projection='3d')
+fig_3d = plt.figure().add_subplot(projection='3d')
 
 #set X, Y, Z variables for 3d plot to be our model domain and head solution
 X = np.arange(0,Lx,dx)
@@ -150,9 +151,9 @@ X, Y = np.meshgrid(X, Y)
 Z = np.flipud(head[0])
 
 #create surface and labels
-surf = ax.plot_surface(X,Y,Z, cmap = 'viridis', linewidth=0, label='head')
-fig_3d.colorbar(surf,shrink=0.5,aspect=5).set_label('Head (m)',fontsize=10,fontweight='bold')
-ax.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
-ax.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
-ax.set_title('Steady-State Model Head Profile', fontsize=15, fontweight='bold')
-plt.show(surf)
+surf = fig_3d.plot_surface(X,Y,Z, cmap = 'viridis', linewidth=0, label='head')
+plt.colorbar(surf,shrink=0.5,aspect=5).set_label('Head (m)',fontsize=10,fontweight='bold')
+fig_3d.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
+fig_3d.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
+fig_3d.set_title('Steady-State Model Head Profile', fontsize=15, fontweight='bold')
+plt.show()
