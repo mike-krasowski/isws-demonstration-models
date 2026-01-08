@@ -1,8 +1,8 @@
 #import packages
 import flopy
 import numpy as np
+import matplotlib as mp; mp.use("TkAgg")
 import matplotlib.pyplot as plt
-import matplotlib as mp
 import pandas as pd
 
 #create model object
@@ -143,7 +143,7 @@ plt.legend(handles=[mp.patches.Patch(color='green',label='River',ec='black'),
                     mp.patches.Patch(color='white',label='Active Cell',ec='black'),
                     mp.patches.Patch(color='black',label='Inactive Cell',ec='black')],
                     bbox_to_anchor=(1.8,1.0))
-plt.show(modelview)
+plt.show()
 
 #create OC stress period data
 oc_spd = {}
@@ -194,7 +194,7 @@ for i in range(len(times)):
                         mp.patches.Patch(color='navy', label='Constant Head Boundary', ec='black'),
                         mp.patches.Patch(color='white', label='Active Cell', ec='black')],
                bbox_to_anchor=(1.8, 1.0))  # create legend
-    plt.show(modelview)
+    plt.show()
 
 #import 3d axes toolkit from matplotlib
 from mpl_toolkits.mplot3d import Axes3D
@@ -217,7 +217,7 @@ for i in range(len(times)):
     ax.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
     ax.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
     ax.set_title('Head Surface: Stress-Period %s'%(i+1), fontsize=15, fontweight='bold')
-    plt.show(surf)
+    plt.show()
 
 #plot a time series at cell left of river
 #get time series for cell
