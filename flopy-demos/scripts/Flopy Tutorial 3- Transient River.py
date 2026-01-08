@@ -239,6 +239,7 @@ cell_id = (0, int(nrow/2) - 1, int(ncol/2) - 1) #specify which cell we're intere
 time_series = headobj.get_ts(cell_id) #get the time series using flopy
 
 #create plot
+plt.figure()
 plt.subplot(1, 1, 1)
 plt.title('Head at cell ({0},{1},{2})'.format(cell_id[0] + 1,
                                               cell_id[1] + 1,
