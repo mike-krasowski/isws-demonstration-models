@@ -32,8 +32,8 @@ for tcolor in np.unique(topo_colors):
         [(220/255, 0.0, 0.0, 0.0), colors.to_rgba(tcolor)],
         N=2)
 
-colors = [(220/255, 0.0, 0.0, 0.0), (220/255, 0.0, 0.0, 1.0)]
-atr_cmap = LinearSegmentedColormap.from_list('alpha_to_red', colors, N=100)
+colors = [(30/255, 110/255, 105/255, 0.0), (30/255, 110/255, 105/255, 1.0)]
+atb_cmap = LinearSegmentedColormap.from_list('alpha_to_blue', colors, N=100)
 
 def find_cells_within_polygon( polygon, gridx, gridy ):
     """
@@ -215,7 +215,7 @@ def run_the_models(sname, wiggle):
     import pandas as pd
 
     # import the geometries of the model (made by hand measurements of the table-top model
-    topodata = pd.read_excel('./inputs/topology.xlsx')
+    topodata = pd.read_csv('./inputs/topology.csv')
 
     # create shapely polygons from measurements
     topopoly = {}
@@ -233,11 +233,15 @@ def run_the_models(sname, wiggle):
     print('ISWS: starting model for scenario:', sname)
 
     # import the schedule that will control the model timing and behavior
-    spds_path = 'inputs/scenarios.xlsx'
-    exfi = pd.ExcelFile(spds_path)
-    spd_schedule = exfi.parse(sname)
-    exfi.close()
-    
+    spds_path = 'inputs/scenarios'
+    for item in os.listdir(spds_path):
+        print('isws: 1', item)
+        fn, fext = os.path.splitext(item)
+        print('isws: 2', fn, fext)
+        if fn == sname:
+            print('isws: if', fn, sname)
+            spd_schedule = pd.read_csv(os.path.join(spds_path, item))
+
     # the stress period lengths from the schedule
     perlen = np.array(spd_schedule.end - spd_schedule.start)
 
@@ -341,10 +345,20 @@ def run_the_models(sname, wiggle):
 
             hk_array[idx[0], :, idx[1]] = hk_array[idx[0], :, idx[1]] * 0.0001 / 600
 
+        elif key in ['fractured_bedrock']:
+
+            # the approximate speed of transport in a youtube video I saw (~20 cm in 6 mins)
+            hk_array[idx[0], :, idx[1]] = hk_array[idx[0], :, idx[1]] * 0.1
+
+        elif key in ['confined_artesian_aquifer']:
+
+            # the approximate speed of transport in a youtube video I saw (~20 cm in 6 mins)
+            hk_array[idx[0], :, idx[1]] = hk_array[idx[0], :, idx[1]] * 1.0
+
         else:
 
             # the approximate speed of transport in a youtube video I saw (~20 cm in 6 mins)
-            hk_array[idx[0], :, idx[1]] = hk_array[idx[0], :, idx[1]] * 0.5
+            hk_array[idx[0], :, idx[1]] = hk_array[idx[0], :, idx[1]] * 0.25
 
     flopy.mf6.ModflowGwfnpf(
         gwf,
@@ -458,8 +472,9 @@ def run_the_models(sname, wiggle):
     well_info['col'] = well_column
 
     # WELLS WELLS WELLS
-    q_factor = 0.1 + (0.1 * wiggle)
-    injection_conc = 100 + (100 * wiggle)
+    q_inject = 0.2 + (0.2 * wiggle)
+    q_extract = 0.75 + (0.75 * wiggle)
+    injection_conc = 1000 + (1000 * wiggle)
     injection_temp = 5.0 + (5.0 * abs(wiggle))
     wel_spd = {}
     for sp in spd_schedule.index:
@@ -479,28 +494,16 @@ def run_the_models(sname, wiggle):
                         wel_temp = injection_temp * spd_schedule[skey][sp]
 
                         # get the pumping rate
-                        qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
+                        if spd_schedule[well_info.id[widx]][sp] >= 0:
+                            qqq = spd_schedule[well_info.id[widx]][sp] * q_inject
+                        else:
+                            qqq = spd_schedule[well_info.id[widx]][sp] * q_extract
 
                         # append into the dictionary
                         # cell id: (lay, row, col), well flux, aux (CONCENTRATION), aux (TEMPERATURE)
                         wel_spd[sp].append(
-                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc, wel_temp])
-
-                    else:
-
-                        # set the injection well concentration
-                        wel_conc = background_conc
-
-                        # set the injection well temperature
-                        wel_temp = background_temp
-
-                        # get the pumping rate
-                        qqq = spd_schedule[well_info.id[widx]][sp] * q_factor
-
-                        # append into the dictionary
-                        # cell id: (lay, row, col), well flux, aux (CONCENTRATION), aux (TEMPERATURE)
-                        wel_spd[sp].append(
-                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc, wel_temp])
+                            [(well_info.lay[widx], well_info.row[widx], well_info.col[widx]), qqq, wel_conc, wel_temp]
+                        )
 
     wel = flopy.mf6.ModflowGwfwel(
         gwf,
@@ -526,12 +529,13 @@ def run_the_models(sname, wiggle):
     imsgwf = flopy.mf6.ModflowIms(
         sim,
         print_option="summary",
-        complexity='complex',
+        # complexity='complex',
         inner_maximum=ninner,
         outer_maximum=nouter,
         outer_dvclose=outer_dvclose,
         inner_dvclose=inner_dvclose,
         filename="{}.ims".format("gwfsolver"),
+        linear_acceleration='BICGSTAB',
     )
 
     sim.register_ims_package(imsgwf, [gwf.name])
@@ -603,7 +607,7 @@ def run_the_models(sname, wiggle):
     )
 
     # Instantiating MODFLOW 6 transport dispersion package
-    dsp_dispersivity = 0.1 + (0.1 * abs(wiggle))
+    dsp_dispersivity = 0.01 + (0.01 * abs(wiggle))
     dsp_dmcoef = 1e-6
     flopy.mf6.ModflowGwtdsp(
         gwt,
@@ -654,7 +658,9 @@ def run_the_models(sname, wiggle):
     cnc_conc = injection_conc * 0.005
     cnc_spd = {sp:[] for sp in spd_schedule.index}
 
-    linger_on = True
+    # with some runs of the physical model, the user may opt not to flush the contaminating well. When this happens,
+    #   the end of the well acts a bit like a contant concentration cell and "lingers" as a source of dye
+    linger_on = False
     for key in spd_schedule.keys():
         linger = False
         for sp in spd_schedule.index:
@@ -994,7 +1000,7 @@ def run_the_models(sname, wiggle):
             particlegroups=pgs,
         )
 
-        # write modpath datasets
+        # write modpath datasets/inputs
         mp.write_input()
 
         # run modpath
@@ -1034,7 +1040,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
         os.makedirs(savepath)
 
     FFMpegWriter = animation.writers['ffmpeg']
-    vid = FFMpegWriter(fps=4)
+    vid = FFMpegWriter(fps=2)
 
     names = list(sim._models.keys())
 
@@ -1047,7 +1053,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     sname = gwf.name[-2:]
 
     # import the geometries of the model (made by hand measurements of the table-top model
-    topodata = pd.read_excel('./inputs/topology.xlsx')
+    topodata = pd.read_csv('./inputs/topology.csv')
 
     # create shapely polygons from measurements
     topopoly = {}
@@ -1064,11 +1070,15 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     # initialize the figure
     fig, ax = plt.subplots()
 
-    # import the schedule that will control the model timing and behavior
-    spds_path = 'inputs/scenarios.xlsx'
-    exfi = pd.ExcelFile(spds_path)
-    spd_schedule = exfi.parse(sname)
-    exfi.close()
+    # import the schedule that controls the model timing and behavior
+    spds_path = 'inputs/scenarios'
+    for item in os.listdir(spds_path):
+        print('isws: 1', item)
+        fn, fext = os.path.splitext(item)
+        print('isws: 2', fn, fext)
+        if fn == sname:
+            print('isws: if', fn, sname)
+            spd_schedule = pd.read_csv(os.path.join(spds_path, item))
 
     # load heads for later plotting (potentiometric surface/water table at least!)
     fname = os.path.join(gwf.model_ws[:-1], gwf.name + '.hds')
@@ -1099,12 +1109,15 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
         # occasionally, the model will produce petty negative numbers and skew the color ramp. swap with zero.
         model_outputs = np.where(model_outputs < 0.000001, 0, model_outputs)
 
+        # there is a quirk where some unsaturated cells get mass in them and the "concentration" value shoots up
+        model_outputs[:, :15, :, :] = 0
+
     elif parameter.lower() in ['temperature', 'temperatures']:
 
         # load temperatures
         temps = gwe.output.temperature().get_alldata()
 
-        # this is hard coded to match above, forgive me! - mpk
+        # this is hard coded to coordinate with above, forgive me! - mpk
         input_temp = 100
         
         # again, we do not want to consider inactive values in our assessment
@@ -1207,7 +1220,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
 
             if parameter.lower() in ['concentration', 'concentrations']:
                 # plot the model data appropriately
-                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap=atr_cmap, zorder=5000)
+                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap=atb_cmap, zorder=5000)
             elif parameter.lower() in ['head', 'heads']:
                 # plot the model data appropriately
                 x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
@@ -1215,8 +1228,8 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
                 # plot the model data appropriately
                 x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
 
-            # set the colormap limits
-            x_data_plot.set_clim(np.nanmin(model_outputs), np.nanmax(model_outputs))
+            # set the colormap limits to coordinate better with the video
+            x_data_plot.set_clim(np.nanmin(model_outputs), np.nanmax(model_outputs)/2)
 
             # plot pathlines
             if sp >= 1:
@@ -1257,3 +1270,4 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
         print('Saved as:\n     >> {}'.format(savepath))
 
     return sim
+

@@ -66,25 +66,28 @@ os.makedirs(savepath)
 ## =================================================================================
 
 # how many cores to work in parallel
-max_workers = 9
+max_workers = 6
 
-# which spreadsheet we would like to read our scenarios from
-spds_path = 'inputs/scenarios.xlsx'
+# which spreadsheets to read our scenarios from. The script will look for these csvs at ./inputs/scenarios
+# 's1' - long-running flow demonstration,
+# 's2' - injection at well 2, extraction at well 6
+scenarios = ['s1', 's2']
 
 ## =================================================================================
 ## END COMMON USER INPUTS
 ## =================================================================================
 
-# create excel file object to get the sheet names to then look at each sheet
-exfi = pd.ExcelFile(spds_path)
-scenarios = exfi.sheet_names
+# if there's only one scenario, do not try to run in parallel
+if len(scenarios) == 1:
 
-# only some scenarios are constructed for now so only run those
-scenarios = scenarios[:3]
+    result = main(scenarios[0])
+    results = [result]
 
-if __name__ == "__main__":
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        results = executor.map(main, scenarios)
+else:
+
+    if __name__ == "__main__":
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = executor.map(main, scenarios)
 
 func_time = 0
 sims = []
@@ -93,7 +96,7 @@ for ppp, result in enumerate(results):
     sims.append(result[0])
     func_time += result[1]
 
-print('ISWS: the WHOLE script took: {} mins with {} mins of function time'.format(
+print('ISWS: the WHOLE script took: {} mins with {} mins of main function time'.format(
     round((time.time() - start_time)/60, 2),
     round(func_time/60, 2)
 ))
