@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 modelname = "my_model"
 save_pth  = ('./outputs/1_SS_Confined/')
+#On a different computer, update this directory pathway depending on the file location
 # exe_path  = ("./modflowdir/mf2005.exe")
 exe_path  = ("../../bin/win/mf2005.exe")
 
