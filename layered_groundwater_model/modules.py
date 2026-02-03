@@ -1154,7 +1154,7 @@ def make_the_animation(sim, nodes, wiggle, parameter=None):
                     pathlines_by_spv[sp][-1] = np.append(pathlines_by_spv[sp][-1], pvoid)
 
     # also accepts .gif format which is helpful for filling out the readme with examples
-    with vid.saving(fig, os.path.join(savepath, '{}_{}.mp4'.format(sname,parameter)), 10):
+    with vid.saving(fig, os.path.join(savepath, '{}_{}.mp4'.format(sname,parameter)), 600):
 
         for sp in range(gwf.nper):
 
