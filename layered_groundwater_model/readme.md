@@ -1,4 +1,4 @@
-# isws-demonstration-models 
+# isws-demonstration-models
 # --> layered_groundwater_model_modflow
 
 To run the desired scenarios and produce the desired animations, run **main.py**. Common user inputs are found in this 
@@ -21,3 +21,6 @@ uptake at well 6
 ### notes
 
  - The scenario csvs currently only work for flow and transport phenomena. The energy model inputs are currently hard coded and do not read from the csvs.
+ - I (mike-krasowski) have intermittently gotten errors with *sim = flopy.mf6.MFSimulation()* associated with a "structure" or "block". This has twice been solved by what I can only describe as "unintentional iterative troubleshooting." For instance, I added a pumping well for one stress period to **s1.csv** and the error went away. I reverted the change and the error did not return.
+   - Another time this was solved by restarting my IDE. That seems to be a reliable way to fix this error. this makes me think it's an issue with file/folder accessing?
+ 

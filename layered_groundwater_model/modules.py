@@ -79,7 +79,7 @@ def find_cells_within_polygon( polygon, gridx, gridy ):
         return pts_in
     else:
         return np.array([])
-        print('Function did not find any cells within polygon.')
+        print('ISWS: find_cells_within_polygon() did not find any cells within polygon.')
 
 
 def determine_inside_indices(mf, polygons, axis=0, buffer=None):
@@ -232,14 +232,11 @@ def run_the_models(sname, wiggle):
 
     print('ISWS: starting model for scenario:', sname)
 
-    # import the schedule that will control the model timing and behavior
+    # import the schedule that controls the model timing and behavior based upon which scenario we are running
     spds_path = 'inputs/scenarios'
     for item in os.listdir(spds_path):
-        print('isws: 1', item)
         fn, fext = os.path.splitext(item)
-        print('isws: 2', fn, fext)
         if fn == sname:
-            print('isws: if', fn, sname)
             spd_schedule = pd.read_csv(os.path.join(spds_path, item))
 
     # the stress period lengths from the schedule
@@ -262,6 +259,8 @@ def run_the_models(sname, wiggle):
         version="mf6",
         exe_name='../bin/win/mf6.exe'
     )
+
+    print(f'ISWS: sim object created successfully for {sname}')
 
     flopy.mf6.ModflowTdis(
         sim,
@@ -390,7 +389,7 @@ def run_the_models(sname, wiggle):
     # coordinate CHD and DRN locations at the top of the model
     riv_spd = {0: []}
     drn_spd = {0: []}
-    chd_spd = {0: [], 20: [], 40: [], 60: [], 80: [], 100: []}
+    chd_spd = {sp: [] for sp in np.arange(0, gwf.nper, 20).astype(int)}
     riv_cond = 2 +   (2 * wiggle)
     drn_cond = 1e5 + (1e5 * wiggle)
     riv_conc = 0
@@ -420,12 +419,12 @@ def run_the_models(sname, wiggle):
         else:
             # cell id (lay, row, col), constant head elevation, aux (CONCENTRATION, TEMPERATURE)
             chd_elev = gwf.modelgrid.zcellcenters[lll, 0, ccc] + wiggle
-            chd_spd[0].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
-            chd_spd[20].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
-            chd_spd[40].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
-            chd_spd[60].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
-            chd_spd[80].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
-            chd_spd[100].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
+            for sp in np.arange(0, gwf.nper, 20).astype(int):
+                # flip back and forth between hot and cold CHD loading
+                if sp % 40 == 0:
+                    chd_spd[sp].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp - 5])
+                else:
+                    chd_spd[sp].append([(lll, 0, ccc), chd_elev, chd_conc, chd_temp + 20])
 
     # RIVERS RIVERS RIVERS
     riv = flopy.mf6.ModflowGwfriv(
@@ -1016,7 +1015,7 @@ def run_the_models(sname, wiggle):
 
     return success, sim, nodes
 
-def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
+def make_the_animation(sim, nodes, wiggle, parameter=None):
     """
     The purpose of this function is to create and save the animation of model results. It does this by plotting the
     results frame-by-frame via standard matplotlib plotting.
@@ -1027,9 +1026,9 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     :param wiggle: float
         a random value by which to "wiggle" some of the parameter values to rerun the scenario in case it fails with the
         baseline parameter values
-    :param parameter: str
+    :param parameter: None or str
         a string which indicates which model result will be plotted for the animation choices are 
-        concentration(s), temperature(s)
+        head(s), concentration(s), or temperature(s)
     :return sim: flopy.mf6.modflow.mfsimulation
         a fully built and run MODFLOW-6 simulation
     """
@@ -1065,19 +1064,16 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     # find which cells are in the topology polygons
     in_idx_list = determine_inside_indices(gwf, list(topopoly.values()), axis=1, buffer=None)
 
-    print('ISWS: starting animation for scenario:', sname)
+    print('ISWS: starting animation for scenario:', sname, parameter)
 
     # initialize the figure
     fig, ax = plt.subplots()
 
-    # import the schedule that controls the model timing and behavior
+    # import the schedule that controls the model timing and behavior based upon which scenario we are running
     spds_path = 'inputs/scenarios'
     for item in os.listdir(spds_path):
-        print('isws: 1', item)
         fn, fext = os.path.splitext(item)
-        print('isws: 2', fn, fext)
         if fn == sname:
-            print('isws: if', fn, sname)
             spd_schedule = pd.read_csv(os.path.join(spds_path, item))
 
     # load heads for later plotting (potentiometric surface/water table at least!)
@@ -1090,41 +1086,42 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
     heads = np.where(heads >= 1e30, np.nan, heads)
 
     # now use "parameter" to identify which outputs we are interested in and process the accordingly
-    if parameter.lower() in ['head', 'heads']:
+    if parameter:
+        if parameter.lower() in ['head', 'heads']:
 
-        # take them as they exist for plotting as array
-        model_outputs = heads * 1
+            # take them as they exist for plotting as array
+            model_outputs = heads * 1
 
-    elif parameter.lower() in ['concentration', 'concentrations']:
+        elif parameter.lower() in ['concentration', 'concentrations']:
 
-        # load concentrations
-        concs = gwt.output.concentration().get_alldata()
+            # load concentrations
+            concs = gwt.output.concentration().get_alldata()
 
-        # this is hard coded... forgive me! - mpk
-        input_conc = 100 + (100 * wiggle)
+            # this is hard coded... forgive me! - mpk
+            input_conc = 100 + (100 * wiggle)
 
-        # we do not want to consider inactive values in our assessment, swap with np.nan
-        model_outputs = np.where(concs > input_conc * 10, np.nan, concs)
-        
-        # occasionally, the model will produce petty negative numbers and skew the color ramp. swap with zero.
-        model_outputs = np.where(model_outputs < 0.000001, 0, model_outputs)
+            # we do not want to consider inactive values in our assessment, swap with np.nan
+            model_outputs = np.where(concs > input_conc * 10, np.nan, concs)
 
-        # there is a quirk where some unsaturated cells get mass in them and the "concentration" value shoots up
-        model_outputs[:, :15, :, :] = 0
+            # occasionally, the model will produce petty negative numbers and skew the color ramp. swap with zero.
+            model_outputs = np.where(model_outputs < 0.000001, 0, model_outputs)
 
-    elif parameter.lower() in ['temperature', 'temperatures']:
+            # there is a quirk where some unsaturated cells get mass in them and the "concentration" value shoots up
+            model_outputs[:, :15, :, :] = 0
 
-        # load temperatures
-        temps = gwe.output.temperature().get_alldata()
+        elif parameter.lower() in ['temperature', 'temperatures']:
 
-        # this is hard coded to coordinate with above, forgive me! - mpk
-        input_temp = 100
-        
-        # again, we do not want to consider inactive values in our assessment
-        model_outputs = np.where(temps > input_temp, np.nan, temps)
+            # load temperatures
+            temps = gwe.output.temperature().get_alldata()
 
-    else:
-        raise Exception("ISWS: EXCEPTION: parameter unrecognized")
+            # this is hard coded to coordinate with above, forgive me! - mpk
+            input_temp = 100
+
+            # again, we do not want to consider inactive values in our assessment
+            model_outputs = np.where(temps > input_temp, np.nan, temps)
+
+        else:
+            raise Exception("ISWS: EXCEPTION: parameter unrecognized")
 
     # load pathlines using the nodes we're interested in
     fpth = os.path.join(sim.sim_path, 'mp', f"mp_{sname}.mppth")
@@ -1157,7 +1154,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
                     pathlines_by_spv[sp][-1] = np.append(pathlines_by_spv[sp][-1], pvoid)
 
     # also accepts .gif format which is helpful for filling out the readme with examples
-    with vid.saving(fig, os.path.join(savepath, '{}.mp4'.format(sname)), 600):
+    with vid.saving(fig, os.path.join(savepath, '{}_{}.mp4'.format(sname,parameter)), 10):
 
         for sp in range(gwf.nper):
 
@@ -1191,7 +1188,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
                 elif id in ['river_channel']:
                     xsec_r.plot_array(lith_array, cmap=tcmaps['alpha_to_cornflowerblue'])
                 else:
-                    print('ruh roh!')
+                    print('ISWS: ruh roh!')
 
             # plot wells and highlight them when active
             well_info = pd.read_csv('./inputs/well_info.csv')
@@ -1218,18 +1215,19 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
 
                 ax.plot([w_x1, w_x1],[w_z1, w_z2], color=wcolor, linewidth=2)
 
-            if parameter.lower() in ['concentration', 'concentrations']:
-                # plot the model data appropriately
-                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap=atb_cmap, zorder=5000)
-            elif parameter.lower() in ['head', 'heads']:
-                # plot the model data appropriately
-                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
-            elif parameter.lower() in ['temperature', 'temperatures']:
-                # plot the model data appropriately
-                x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
+            if parameter:
+                if parameter.lower() in ['concentration', 'concentrations']:
+                    # plot the model data appropriately
+                    x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap=atb_cmap, zorder=5000)
+                elif parameter.lower() in ['head', 'heads']:
+                    # plot the model data appropriately
+                    x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
+                elif parameter.lower() in ['temperature', 'temperatures']:
+                    # plot the model data appropriately
+                    x_data_plot = xsec_r.plot_array(model_outputs[sp], cmap='jet', alpha=0.5, zorder=5000)
 
-            # set the colormap limits to coordinate better with the video
-            x_data_plot.set_clim(np.nanmin(model_outputs), np.nanmax(model_outputs)/2)
+                # set the colormap limits to coordinate better with the video
+                x_data_plot.set_clim(np.nanmin(model_outputs), np.nanmax(model_outputs)/2)
 
             # plot pathlines
             if sp >= 1:
@@ -1252,7 +1250,7 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
             ax.plot(gwf.modelgrid.xcellcenters.flatten(), pot_surf, lw=1.25, color='cornflowerblue')
 
             # figure finagling
-            ax.set_title('Scenario: {}, time: {}'.format(sname, spd_schedule.end[sp]))
+            ax.set_title('Scenario: {} {}, time: {}'.format(sname, parameter, spd_schedule.end[sp]))
 
             ax.axis('equal')
             ax.axis('off')
@@ -1266,8 +1264,9 @@ def make_the_animation(sim, nodes, wiggle, parameter='HEAD'):
         # finish making movie?
         vid.finish()
         plt.close()
-        print('Animation complete.')
-        print('Saved as:\n     >> {}'.format(savepath))
+        print('ISWS: Animation complete.')
+        print('ISWS: Saved as:\n     >> {}'.format(savepath))
 
-    return sim
+    # return sim
+
 
