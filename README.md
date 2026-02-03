@@ -12,3 +12,6 @@ folder of this repository.
 ### layered_groundwater_model
 This folder contains scripts that create MODFLOW 6 models and animations representing the enVISION tabletop groundwater
 model. The model and scripts have infrastructure to build and run groundwater flow, transport, and energy models.
+
+https://github.com/user-attachments/assets/4e200a6d-428c-4b71-be96-b90453a7beab
+
