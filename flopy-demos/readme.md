@@ -1,5 +1,5 @@
 # isws-demonstration-models
-# --> layered_groundwater_model_modflow
+# --> flopy-demos
 
 The scripts and files of this folder contain examples that demonstrate the usage of FloPy and methods for examining 
 model outputs. 
