@@ -8,7 +8,7 @@ environment. See the subsections below for descriptions and instructions specifi
 This is a shared folder for the storing of important binary files (such as MODFLOW executables) needed for the various 
 folder of this repository.
 
-### layered_groundwater_model_modflow
+### layered_groundwater_model
 This folder contains scripts that create MODFLOW 6 models and animations representing the enVISION tabletop groundwater
 model. The model and scripts have infrastructure to build and a run groundwater flow, tranpsort, and energy models.
 Please see the readme in this folder for more information.
