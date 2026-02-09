@@ -195,7 +195,7 @@ def get_nodes(gwf, locs):
         nodes.append(k * gwf.modelgrid.nrow * gwf.modelgrid.ncol + i * gwf.modelgrid.ncol + j)
     return nodes
 
-def run_the_models(sname, wiggle):
+def build_and_run_models(sname, wiggle):
     """
     The purpose of this function is to build and run the model for an individual scenario
     :param sname: str
@@ -1015,7 +1015,7 @@ def run_the_models(sname, wiggle):
 
     return success, sim, nodes
 
-def make_the_animation(sim, nodes, wiggle, parameter=None):
+def make_animation(sim, nodes, wiggle, parameter=None):
     """
     The purpose of this function is to create and save the animation of model results. It does this by plotting the
     results frame-by-frame via standard matplotlib plotting.

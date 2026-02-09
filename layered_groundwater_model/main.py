@@ -52,12 +52,12 @@ def main(input):
     wiggle = 0
     while not success:
 
-        success, sim, nodes = run_the_models(name, wiggle)
+        success, sim, nodes = build_and_run_models(name, wiggle)
         wiggle = random.choice([1,-1]) * random.random() * 0.1
 
     # create animations for each parameter requested
     for parameter in parameters:
-        make_the_animation(sim, nodes, wiggle, parameter=parameter)
+        make_animation(sim, nodes, wiggle, parameter=parameter)
 
     return [sim, time.time() - start_time]
 
