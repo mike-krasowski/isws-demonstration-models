@@ -7,7 +7,7 @@ folder also contains its own readme with more detailed information).
 
 ### bin
 This is a shared folder for the storing of important binary files (such as MODFLOW executables) needed for the various 
-folder of this repository.
+folders of this repository.
 
 ### layered_groundwater_model
 This folder contains scripts that create MODFLOW 6 models and animations representing the enVISION tabletop groundwater
