@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 modelname = "my_model"
 save_pth  = ('./outputs/1_SS_Confined/')
 #On a different computer, update this directory pathway depending on the file location
-# exe_path  = ("./modflowdir/mf2005.exe")
 exe_path  = ("../../bin/win/mf2005.exe")
 
 m = flopy.modflow.Modflow(modelname,
@@ -109,14 +108,14 @@ if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
 #extract binary data from head file as flopy head object
-headobj = flopy.utils.binaryfile.HeadFile(save_pth + modelname+'.hds')
+headobj = flopy.utils.binaryfile.HeadFile(save_pth + f'{modelname}.hds')
 print("flopy head object: \n", headobj)
 
 #extract head data from head object
 head = headobj.get_data(totim=1.0)
 
 #extract binary data from budget file as flopy budget object
-budgobj = flopy.utils.binaryfile.CellBudgetFile(save_pth+modelname+'.cbc')
+budgobj = flopy.utils.binaryfile.CellBudgetFile(save_pth + f'{modelname}.cbc')
 print("flopy budget object: \n", budgobj)
 
 frf = budgobj.get_data(text='flow right face', totim=1.0)
@@ -158,3 +157,5 @@ fig_3d.set_xlabel('Lx (m)', fontsize=15, fontweight='bold')
 fig_3d.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
 fig_3d.set_title('Steady-State Model Head Profile', fontsize=15, fontweight='bold')
 plt.show()
+
+# If empty window shows up, change the last line to "plt.show(block=True)".

@@ -11,7 +11,6 @@ modelname = "my_river_model"
 # path where files created for model run are to be saved
 save_path  = ('./outputs/3_Transient_River/')
 # points to the directory where the MODFLOW 2005 executable sits
-# exe_path   = ('./modflowdir/mf2005.exe')
 exe_path  = ("../../bin/win/mf2005.exe")
 
 m = flopy.modflow.Modflow(modelname,
@@ -35,13 +34,16 @@ nper = 3
 
 #specify if stress period is transient or steady-state
 steady = [True, False, False] #<-- relates to [SS, transient transient]
-perlen = [1.0, 5.0, 5.0]
-nstp   = [1,   10,  10]
+# The first stress period is steady-state, and 2nd 3rd stress periods are transient.
+perlen = [1.0, 5.0, 5.0]  #This sets up the period length for each stress period. The unit come from itmuni (Below)
+# (The unit for period length is set up in the following dis package )
+nstp   = [1,   10,  10] #This sets up the number of time steps within each stress period
 
 #create flopy discretization object, length units are meters (2) and time units are days (4)
 dis = flopy.modflow.ModflowDis(model=m, nlay=nlay, nrow=nrow, ncol=ncol,
-                               delr=dx, delc=dy, top=ztop, botm=zbot,
-                               itmuni = 4, lenuni = 2,
+                               delr=dx, delc=dy, #delr= dx: column width (x-direction); delc = dy: row height (y-direction)
+                               top=ztop, botm=zbot,
+                               itmuni = 4, lenuni = 2, #itmuni sets up the time unit of stress period length (1 s; 2 min; 3 hours; 4 days; 5 years)
                                nper=nper, steady=steady, perlen=perlen, nstp=nstp)
 
 #CHECK GRID from DIS package
@@ -76,9 +78,10 @@ lpf = flopy.modflow.ModflowLpf(model=m, hk=hk, vka=vka, sy=sy, ss=ss, laytyp=lay
 strt_head=2
 end_head=2
 #create list to hold stress period constant head boundary condition cells
-bound_sp1 = []
+bound_sp1 = [] #This is part of the CHD (Constant Head) package.
+#This empty list will store all constant-head boundary cells for stress period 1 in the format (lay,row,col,h_start,h_end)
 
-#assign constant head boundary cells on the left and right boundaries
+# assign constant head boundary cells on the left (col = 0) and right (col = ncol-1) boundaries
 for lay in range(nlay):
     for row in range(nrow):
         bound_sp1.append([lay,row,0,strt_head,end_head])
@@ -96,8 +99,8 @@ chd = flopy.modflow.ModflowChd(model=m, stress_period_data=chd_spd)
 
 #DEFINE RIVERS
 
-#stress period 1 river cells
-riv_sp1   = [] #create list to store all river cells for stress period 1
+#stress period 1 river cells for RIV package
+riv_sp1   = [] #create list to store all river cells for stress period 1; Format [layer, row, column, stage, conductance, bottom]
 k_rivbott = 1 #river bottom hydraulic conductivity in m/d
 sed_thick = 1 #thickness of riverbed sediment in m
 cond      = k_rivbott*(dy)*(dx)/(sed_thick) #river bed conductance in m^2/d
@@ -145,11 +148,11 @@ plt.legend(handles=[mp.patches.Patch(color='green',label='River',ec='black'),
                     bbox_to_anchor=(1.8,1.0))
 plt.show()
 
-#create OC stress period data
+#create OC (Output Control) stress period data
 oc_spd = {}
 # creating dictionary of output instructions
 for kper in range(nper):
-    for kstp in range(nstp[kper]):
+    for kstp in range(nstp[kper]):  #nstp[kper] = number of time steps in this stress period
         oc_spd[(kper, kstp)] = ['save head',
                                 'save drawdown',
                                 'save budget',

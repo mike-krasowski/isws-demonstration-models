@@ -10,7 +10,6 @@ modelname  = "my_pumping_model"
 # path where files created for model run are to be saved
 save_path  = ('./outputs/2_Pumping_SS/')
 # points to the directory where the MODFLOW 2005 executable sits
-# exe_path   = ('./modflowdir/mf2005.exe')
 exe_path  = ("../../bin/win/mf2005.exe")
 
 m = flopy.modflow.Modflow(modelname,
@@ -131,7 +130,7 @@ spd = {(0, 0): ['print head', 'print budget', 'save head', 'save budget']}
 #create flopy output control object
 oc = flopy.modflow.ModflowOc(model=m, stress_period_data=spd, compact=True)
 
-#assign groundwater flow solver
+#assign groundwater flow solver (Preconditioned Conjugate Gradient package)
 pcg = flopy.modflow.ModflowPcg(model=m)
 
 #write MODFLOW input files
@@ -150,9 +149,6 @@ head = headobj.get_data(totim=1.0)
 budgobj = flopy.utils.binaryfile.CellBudgetFile(save_path+modelname+'.cbc')
 frf = budgobj.get_data(text='flow right face', totim=1.0)
 fff = budgobj.get_data(text='flow front face', totim=1.0)
-
-# initiating Latex rendering
-# mp.rcParams['text.usetex'] = True
 
 #plot results
 plt.figure(figsize=(10,10)) #create 10 x 10 figure
@@ -201,7 +197,7 @@ fig_3d.set_ylabel('Ly (m)', fontsize=15, fontweight='bold')
 fig_3d.set_title('Steady-State Pumping, Head Surface', fontsize=15, fontweight='bold')
 plt.show()
 
-#plot head head transect
+#plot head transect
 plt.figure(figsize = (10,4))
 x = np.arange(0,Lx,dx)
 plt.plot(x,np.flipud(head[0])[int(nrow/2)][:])
@@ -209,3 +205,5 @@ plt.title('Head Transect across X-Domain',fontweight = 'bold', fontsize = 14)
 plt.xlabel('X Distance (m)',fontsize = 12)
 plt.ylabel('Head (m)',fontsize = 12)
 plt.show()
+
+# If empty window shows up, change the last line to "plt.show(block=True)".
