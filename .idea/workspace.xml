@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f945ab87-30ac-4a25-98f5-a36e39acc419" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parflow/contamination_model.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parflow/create_pfb.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parflow/modflow docker backup/Dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parflow/modules.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parflow/topology.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/linux/mf6" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/linux/mfnwt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/linux/mp7" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/linux/zbud6" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/mac/mf6" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/mac/mfnwt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/mac/zbud6" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/libmf6.dll" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/mf5to6.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/mf6.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/mfnwt.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/mp6.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/mpath7.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/pestpp-ies.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/win/zbud6.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/Dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/Notes/Docker.pptx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/Notes/Introduction to Docker.docx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/config/environment.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/config/requirements.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/scenarios_long.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/scenarios_short.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/scenarios_short2.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/scenarios_short3.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/topology.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/inputs/well_info.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/main_lx.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/modules.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/layered_groundwater_model/modules_lx.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="32cGwtup7tx8l8UAJIewg7rMG24" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.Flopy Tutorial 1- Steady-State, Confined Aquifer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Flopy Tutorial 2- Steady-State Pumping Well.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Flopy Tutorial 3- Transient River.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/esrag/Documents/GitHub/isws-demonstration-models&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models\layered_groundwater_model" />
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models\layered_groundwater_model\config" />
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models\layered_groundwater_model" />
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models\Parflow" />
+      <recent name="C:\Users\esrag\Documents\GitHub\isws-demonstration-models\bin\linux" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.main">
+    <configuration name="Flopy Tutorial 1- Steady-State, Confined Aquifer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="isws-demonstration-models" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/flopy-demos/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/flopy-demos/scripts/Flopy Tutorial 1- Steady-State, Confined Aquifer.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Flopy Tutorial 2- Steady-State Pumping Well" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="isws-demonstration-models" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/flopy-demos/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/flopy-demos/scripts/Flopy Tutorial 2- Steady-State Pumping Well.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Flopy Tutorial 3- Transient River" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="isws-demonstration-models" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/flopy-demos/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/flopy-demos/scripts/Flopy Tutorial 3- Transient River.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="isws-demonstration-models" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/layered_groundwater_model" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/layered_groundwater_model/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+        <item itemvalue="Python.Flopy Tutorial 3- Transient River" />
+        <item itemvalue="Python.Flopy Tutorial 1- Steady-State, Confined Aquifer" />
+        <item itemvalue="Python.Flopy Tutorial 2- Steady-State Pumping Well" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-5a2391486177-d3b881c8e49f-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-233.13763.11" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="f945ab87-30ac-4a25-98f5-a36e39acc419" name="Changes" comment="" />
+      <created>1757712689416</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1757712689416</updated>
+    </task>
+    <servers />
+  </component>
+</project>
