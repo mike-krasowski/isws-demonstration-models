@@ -164,6 +164,21 @@ ann.add(tf.keras.layers.Dense(1)) # matches number of output variables
 ann.build()
 
 ann.compile(optimizer='Adam', loss='mse')
+print(
+f'''
+**ISWS Comment**
+Model notes:
+The model includes 5 layers that are shaped to mimic the number of output variables (i.e., 8) as defined
+in the training dataset. Thus, the layer shapes are some multiple of 8 nodes - from 32 down to 1. 
+(TBH, AEJ is not sure if this is correct, but this is where AEJ started.) There seems to be a link between
+the number of parameters and the product of the node shapes of the previous and current layer: 
+
+i.e., param_i = (layer_i.shape * layer_i-1.shape) + layer_i.shape 
+
+However, again, more digging needs to be done to understand why this is the case.
+**ISWS Comment**
+'''
+)
 # print model summary
 print(ann.summary())
 
@@ -211,18 +226,23 @@ for sp in np.unique(mra[:,0]):
         ccc = ax[pl,0].scatter(mra[subidx,1], mra[subidx,2], c=mra[subidx,-1])
         ax[pl,0].set_title(f'MF Heads:\nlayer {pl}, sp {sp}')
         cbar0 = fig.colorbar(ccc, ax=ax[pl,0])
+        cbar0.set_label("MODFLOW simulated\nGW Head (ft)")
+
         # plot ann-heads
         ccc = ax[pl,1].scatter(mra[subidx, 1], mra[subidx, 2], c=ann_hds[subidx])
         ax[pl,1].set_title(f'ANN Heads:\nlayer {pl}, sp {sp}')
         ccc.set_clim([cbar0.vmin, cbar0.vmax])
         cbar1 = fig.colorbar(ccc, ax=ax[pl,1])
+        cbar1.set_label("ANN simulated\nGW Head (ft)")
         # plot difference
+        diff = mra[subidx,-1].reshape(-1)-ann_hds[subidx].reshape(-1)
         ccc = ax[pl,2].scatter(mra[subidx, 1], mra[subidx, 2],
-                               c=(mra[subidx,-1].reshape(-1)-ann_hds[subidx].reshape(-1)),
+                               c=diff,
                                cmap='bwr')
         ax[pl, 2].set_title(f'MF - ANN Heads:\nlayer {pl}, sp {sp}')
-        ccc.set_clim([-0.25,0.25])
+        ccc.set_clim([-0.1,0.1])
         cbar2 = fig.colorbar(ccc, ax=ax[pl, 2])
+        cbar2.set_label("Heads Diff\nMF - ANN = Diff (ft)")
     # add space in subplots
     fig.subplots_adjust(hspace=0.45, wspace=0.25)
 
