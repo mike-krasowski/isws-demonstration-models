@@ -153,6 +153,8 @@ test = tf.keras.callbacks.EarlyStopping(
 )
 
 start = time.time()
+# train ANN using the model parameters (train_x) to predict heads (train_y)
+# this training ultimately generates the ANN to use for predictions later
 ann.fit(train_x, train_y, epochs=30, callbacks=test)
 print(f'Training time elapsed {start-time.time()}')
 print('****************\n'+'ANN Evaluation...')
