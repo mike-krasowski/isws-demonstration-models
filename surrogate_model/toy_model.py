@@ -27,7 +27,8 @@ def run_toy_model(model_name=None):
 
     Returns
     -------
-    None.
+    m - MODFLOW "toy" model instance created in this function
+    run_time - float; the amount of time in seconds needed to run the "toy" model.
 
     """
     # define the model name
@@ -72,7 +73,7 @@ def run_toy_model(model_name=None):
     dz = (ztop - zbot) / nlay #grid spacing between layers
 
     #specify number of stress periods
-    nper = 5 #!!! eventually update to include transient
+    nper = 5
 
     #specify if stress period is transient (False) or steady-state (True)
     steady = []

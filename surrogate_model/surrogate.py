@@ -1,90 +1,50 @@
+"""
+This script runs both the Toy model and the artificial neural network (ANN) to generate the surrogate model that
+attempts to mimic the "toy" model.
+
+Author: Allan E. Jones
+Date: 28 May 2026
+"""
+
+# quality of life
+def vdir(var):
+    """
+    Prints out the methods and functions within an object vertically within the console, rather than horizontally or
+    wrapped with the console settings.
+
+    Parameters
+    ----------
+    var - object to be queried, and sub-methods to be printed.
+
+    Returns
+    -------
+    None
+        Prints out the list obtained by the command `dir()` vertically in the console.
+
+    """
+    for i in dir(var):
+        print(i)
+
 #%% IMPORTS ========================================
 import flopy
+import flopy.utils.binaryfile as bf
 import numpy as np
 import matplotlib as mp; mp.use('TkAgg')
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+import time
+import tensorflow as tf
+
+# HOMEBREW IMPORTS
+from modules import xyzcellcenters_3d, find_min_dist_and_value
+from toy_model import run_toy_model
 
 # import and run the toy model
-from toy_model import run_toy_model
 mf, run_time = run_toy_model()
-# plt.close("all")
-
-# quality of life
-def vdir(var):
-    for i in dir(var):
-        print(i)
 
 # access the head information from the model
-import flopy.utils.binaryfile as bf
 hds = bf.HeadFile(os.path.join(mf.model_ws, mf.name+'.hds')).get_alldata()
-
-def xyzcellcenters_3d(mf):
-    """
-    Calculate 3D np.arrays of x-, y-, z- coodinate locations for each model cell node
-
-    Parameters
-    ----------
-    mf - MODFLOW-NWT model object
-
-    Returns
-    -------
-    xmesh - np.array of shape (layers, rows, columns), x-coordinate locations of model cell nodes
-
-    ymesh - np.array of shape (layers, rows, columns), y-coordinate locations of model cell nodes
-
-    zzz - np.array of shape (layers, rows, columns), z-elevations of model cell nodes
-    """
-    xxx, yyy, zzz = mf.modelgrid.xyzcellcenters
-    xmesh = np.ones(zzz.shape)*-999
-    ymesh = np.ones(zzz.shape)*-999
-    for l in range(zzz.shape[0]):
-        xmesh[l] = xxx
-        ymesh[l] = yyy
-
-    return xmesh, ymesh, zzz
-
-def find_min_dist_and_value(mf, pkg_spd, key='stage'):
-    """
-    Calculates distance of each model cell to the nearest instance of a particular package cell (e.g., wel,
-    riv) in the model. Also, returns the pertinent values (e.g., 'stage',  'flux') for that nearest package cell.
-
-    Parameters
-    ----------
-    mf - MODFLOW-NWT model object
-
-    pkg_spd - np.recarray, stress period data for a specified MODFLOW-NWT package (e.g., RIV, WEL, etc.)
-
-    key - str, field/key for the np.recarray (`pkg_spd`) which denotes the pertinent simulated data to obtain from
-    the model object.
-
-    Returns
-    -------
-    dist - np.array of shape (layers, rows, columns), minimum distance from each cell to the nearest cell using the
-    desired MF package (e.g., wel, riv)
-
-    value - np.array of shape (layers, rows, columns), the pertinent (i.e., coordinated by key) value of the nearest
-    package cell to each model cell
-
-    """
-    # package locations
-    idx = (pkg_spd['k'], pkg_spd['i'], pkg_spd['j'])
-    # model cell centers in 3d arrays
-    xxx, yyy, zzz = xyzcellcenters_3d(mf)
-
-    # find distance from package points
-    stor1 = np.zeros((len(idx[0]), xxx.shape[0], xxx.shape[1], xxx.shape[2]))
-    for n, i in enumerate(zip(idx[0], idx[1], idx[2])):
-        stor1[n] = np.sqrt(((xxx - xxx[i]) ** 2) +
-                           ((yyy - yyy[i]) ** 2) +
-                           ((zzz - zzz[i]) ** 2))
-    # calculate minimum distance and the values associated with package for each nearby cell
-    dist = np.min(stor1, axis=0)
-    min_idx = np.argmin(stor1, axis=0)
-    value = pkg_spd[key][min_idx]
-    return dist, value
-
 
 # obtain 3D arrays of cell node xyz locations
 xxx, yyy, zzz = xyzcellcenters_3d(mf)
@@ -152,8 +112,6 @@ test_x,  test_y  = mra[test_idx,:-1],  mra[test_idx, -1]
 
 # ======================================================================================================
 ### create ANN
-import tensorflow as tf
-
 ann = tf.keras.Sequential()
 
 #AEJ is making this up - needs to read more on suggested model structure
@@ -194,7 +152,6 @@ test = tf.keras.callbacks.EarlyStopping(
     start_from_epoch=0
 )
 
-import time
 start = time.time()
 ann.fit(train_x, train_y, epochs=30, callbacks=test)
 print(f'Training time elapsed {start-time.time()}')
