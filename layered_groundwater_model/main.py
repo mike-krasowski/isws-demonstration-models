@@ -117,5 +117,3 @@ print('ISWS: the WHOLE script took: {} mins with {} mins of main function time'.
     round((time.time() - start_time)/60, 2),
     round(func_time/60, 2)
 ))
-
-

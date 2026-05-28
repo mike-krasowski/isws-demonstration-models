@@ -1,0 +1,13 @@
+name: demo-surrogate
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python<=3.13
+  - flopy
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - pip:
+    - tensorflow # surrogate addition
