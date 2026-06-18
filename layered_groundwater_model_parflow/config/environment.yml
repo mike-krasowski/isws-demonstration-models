@@ -1,0 +1,11 @@
+name: parflow-env
+channels:
+  - conda-forge
+dependencies:
+  - ipykernel
+  - matplotlib
+  - numpy=1.26
+  - pip
+  - python=3.9
+  - wheel
+prefix: /opt/conda/envs/parflow-env
