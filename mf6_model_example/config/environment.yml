@@ -1,0 +1,14 @@
+name: isws-demonstration-models
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ffmpeg
+  - flopy
+  - matplotlib
+  - numpy
+  - openpyxl
+  - pandas
+  - pip
+  - pyyaml
+  - shapely
