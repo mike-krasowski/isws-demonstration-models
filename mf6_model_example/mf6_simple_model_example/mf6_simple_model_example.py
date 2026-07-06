@@ -6,9 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use("QtAgg")  # or QtAgg
 import matplotlib
-
 import numpy as np
-
 import flopy
 print(sys.version)
 
@@ -35,10 +33,13 @@ k = 1.0
 # a groundwater flow (GWF) model, and an iterative model solution (IMS), which controls how the GWF model is solved.
 
 
+mf6_exe = "C:/Users/esrag/Documents/GitHub/isws-demonstration-models/bin/win/mf6.exe"
+
 
 # Create the Flopy simulation object
 sim = flopy.mf6.MFSimulation(
-    sim_name=name, exe_name="./bin/win/mf6.exe", version="mf6", sim_ws=workspace
+    sim_name=name, exe_name= mf6_exe,
+    version="mf6", sim_ws=workspace
 )
 
 # Create the Flopy temporal discretization object
@@ -138,31 +139,6 @@ plt.title(f"Layer {ilay + 1}: Constant Head Cells")
 # in workspace
 print(os.listdir(workspace))
 
-# Write the datasets
-sim.write_simulation()
-
-
-success, buff = sim.run_simulation()
-
-print("Success =", success)
-
-for line in buff:
-    print(line)
-
-print(sim.exe_name)
-
-# We can also use the Flopy PlotMapView capabilities for MODFLOW 6
-fig = plt.figure(figsize=(10, 10))
-ax = fig.add_subplot(1, 1, 1, aspect="equal")
-modelmap = flopy.plot.PlotMapView(model=gwf, ax=ax)
-
-
-
-#############################################
-# We can also use the Flopy PlotMapView capabilities for MODFLOW 6
-fig = plt.figure(figsize=(10, 10))
-ax = fig.add_subplot(1, 1, 1, aspect="equal")
-
 #################################################
 
 # Create the output control package
@@ -180,6 +156,28 @@ oc = flopy.mf6.modflow.mfgwfoc.ModflowGwfoc(
     budget_filerecord=budget_filerecord,
     printrecord=printrecord,
 )
+###########################################
+# Write the datasets
+sim.write_simulation()
+
+
+success, buff = sim.run_simulation()
+
+print("Success =", success)
+
+
+
+# We can also use the Flopy PlotMapView capabilities for MODFLOW 6
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(1, 1, 1, aspect="equal")
+modelmap = flopy.plot.PlotMapView(model=gwf, ax=ax)
+
+
+
+#############################################
+# We can also use the Flopy PlotMapView capabilities for MODFLOW 6
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 
 
