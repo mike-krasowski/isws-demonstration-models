@@ -1,5 +1,10 @@
 """
-The purpose of this script is to house a basic implementation of a PRT simulation in MODFLOW 6
+The purpose of this script is to house a basic implementation of a PRT simulation in MODFLOW 6 to demonstrate the
+workflow for delineating a temporal capture zone.
+
+Much of the work here references and uses functions from: https://github.com/MODFLOW-ORG/modflow6-examples
+specifically: https://github.com/MODFLOW-ORG/modflow6-examples/blob/develop/scripts/ex-prt-mp7-p02.py and
+              https://github.com/MODFLOW-ORG/modflow6-examples/blob/develop/scripts/ex-prt-mp7-p03.py
 """
 
 import flopy
@@ -129,6 +134,8 @@ sto = flopy.mf6.ModflowGwfsto(
 )
 
 recharge_rate = 0.00125
+
+# after: https://matplotlib.org/stable/gallery/images_contours_and_fields/colormap_interactive_adjustment.html
 t = np.linspace(0, 2 * np.pi, nrow)
 recharge = (np.sin(t)[:, np.newaxis] * np.cos(t)[np.newaxis, :] * recharge_rate) + recharge_rate
 
