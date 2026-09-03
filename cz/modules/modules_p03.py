@@ -7,6 +7,7 @@ import flopy
 from flopy.export.vtk import Vtk
 import flopy.utils.binaryfile as bf
 from flopy.plot.styles import styles
+from flopy.plot.plotutil import bc_color_dict
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -55,7 +56,6 @@ def remove_COORDINATE_CHECK_METHOD(sim_ws):
 def reverse_budgetfile(fpth, rev_fpth, tdis):
     f = bf.CellBudgetFile(fpth, tdis=tdis)
     f.reverse(rev_fpth)
-
 
 def reverse_headfile(fpth, rev_fpth, tdis):
     f = bf.HeadFile(fpth, tdis=tdis)
@@ -129,8 +129,8 @@ def plot_head(gwf, paths, head):
         mm = flopy.plot.PlotMapView(gwf, ax=ax, layer=ilay)
         mm.plot_grid(lw=0.5)
         mm.plot_bc("WEL", plotAll=True)
-        mm.plot_bc("CHD", plotAll=True)
-        # mm.plot_bc("RIV", plotAll=True)
+        # mm.plot_bc("CHD", plotAll=True)
+        mm.plot_bc("RIV", plotAll=True)
         # mm.plot_bc("DRN", plotAll=True, color="green")
 
         pc = mm.plot_array(head[ilay, :, :], edgecolor="black", alpha=0.25)
@@ -160,6 +160,8 @@ def plot_pathpoints(gwf, mf6pl, paths, mp7pl=None, title=None):
         if title is not None:
             styles.heading(ax if mp7pl is None else ax[0], heading=title)
 
+        plot_capture_zone(mf6pl)
+
         plot_points(fig, ax if mp7pl is None else ax[0], gwf, mf6pl)
         if mp7pl is not None:
             plot_points(fig, ax[1], gwf, mp7pl, colorbar=False)
@@ -182,72 +184,63 @@ def plot_pathpoints_3d(gwf, mf6pl, paths, sp=1, title=None):
     vert_exag = 10
     vtk = Vtk(model=gwf, binary=False, vertical_exageration=vert_exag, smooth=True)
     vtk.add_model(gwf)
+    # mf6pl = mf6pl.to_records(index=False)
     vtk.add_pathline_points(mf6pl)
     gwf_mesh, prt_mesh = vtk.to_pyvista()
-    drn_mesh = pv.Box(
-        bounds=[
-            4500,
-            10000,
-            3000,
-            3500,
-            220 * vert_exag,
-            gwf.output.head().get_data()[0, 0, gwf.modelgrid.ncol - 1] * vert_exag,
-        ]
-    )
-    riv_mesh = pv.Box(
-        bounds=[
-            gwf.modelgrid.extent[1] - np.unique(gwf.modelgrid.delc)[0],
-            gwf.modelgrid.extent[1],
-            gwf.modelgrid.extent[2],
-            gwf.modelgrid.extent[3],
-            220 * vert_exag,
-            gwf.output.head().get_data()[0, 0, gwf.modelgrid.ncol - 1] * vert_exag,
-        ]
-    )
-    wel_spd = gwf.wel.stress_period_data.array
-    for wel in wel_spd[sp]:
-        w_lrc = wel[0]
-        x_min = np.sum(gwf.modelgrid.delc[:w_lrc[]])
-        x_max =
-        y_min =
-        y_max =
-        z_min = gwf.modelgrid.top_botm[w_lrc[0]+1, w_lrc[1], w_lrc[2]] * vert_exag
-        z_max = gwf.modelgrid.top_botm[w_lrc[0], w_lrc[1], w_lrc[2]] * vert_exag
-        wel_mesh = pv.Box(bounds=(4500, 5000,
-                                  5000, 5500,
-                                  220 * vert_exag, 4))
+    meshes = [gwf_mesh, prt_mesh]
 
-    bed_mesh = pv.Box(
-        bounds=[
-            gwf.modelgrid.extent[0],
-            gwf.modelgrid.extent[1],
-            gwf.modelgrid.extent[2],
-            gwf.modelgrid.extent[3],
-            200 * vert_exag,
-            220 * vert_exag,
-        ]
-    )
-    gwf_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    gwf_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    gwf_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    prt_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    prt_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    prt_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    drn_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    drn_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    drn_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    riv_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    riv_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    riv_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    wel_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    wel_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    wel_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    wel2_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    wel2_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    wel2_mesh.rotate_x(10, point=axes.origin, inplace=True)
-    bed_mesh.rotate_z(110, point=axes.origin, inplace=True)
-    bed_mesh.rotate_y(-10, point=axes.origin, inplace=True)
-    bed_mesh.rotate_x(10, point=axes.origin, inplace=True)
+    bc_meshes = {}
+    for pckg_name in gwf.get_package_list():
+
+        pckg = gwf.get_package(pckg_name)
+
+        pckg_type = str(type(pckg))[-5:-2]
+
+        if pckg.has_stress_period_data and (pckg_type != 'drn'):
+
+            bc_meshes[pckg_type] = []
+
+            print('ISWS: trblsht:', type(pckg))
+
+            # when we assign a boundary condition once and let MODFLOW carry the condition forward without entering any
+            # further information, this gets formatted weirdly. We need to count backward from the sp of interest to
+            # find the most recent assignment that will be active.
+            spda = pckg.stress_period_data.array
+            spd = spda[sp]
+            counter = 0
+            while spda[sp - counter] is None:
+                counter += 1
+                spd = spda[sp-counter]
+                if sp - counter < 0:
+                    break
+
+            if spd is not None:
+
+                for bc_cell in spd:
+                    bc_lrc = bc_cell[0]
+                    print('ISWS: trblsht:', bc_lrc)
+
+                    x_min = np.sum(gwf.modelgrid.delr[:bc_lrc[2]])
+                    x_max = np.sum(gwf.modelgrid.delr[:bc_lrc[2] + 1])
+                    y_min = np.sum(gwf.modelgrid.delc[bc_lrc[1] + 1:])
+                    y_max = np.sum(gwf.modelgrid.delc[bc_lrc[1]:])
+                    z_min = gwf.modelgrid.top_botm[bc_lrc[0]+1, bc_lrc[1], bc_lrc[2]] * vert_exag
+                    z_max = gwf.modelgrid.top_botm[bc_lrc[0], bc_lrc[1], bc_lrc[2]] * vert_exag
+                    bc_mesh = pv.Box(bounds=(x_min, x_max,
+                                             y_min, y_max,
+                                             z_min, z_max))
+
+                    bc_meshes[pckg_type].append(bc_mesh)
+
+                    meshes.append(bc_mesh)
+
+    # now that we have all of the mesh objects in a list, loop through them and rotate to get our starting positions for
+    # the figure
+    for msh in meshes:
+        msh.rotate_z(110, point=axes.origin, inplace=True)
+        msh.rotate_y(-10, point=axes.origin, inplace=True)
+        msh.rotate_x(10, point=axes.origin, inplace=True)
+
 
     def _plot(paths, screenshot=False):
         p = pv.Plotter(
@@ -261,19 +254,22 @@ def plot_pathpoints_3d(gwf, mf6pl, paths, sp=1, title=None):
         p.add_mesh(gwf_mesh, opacity=0.025, style="wireframe")
         p.add_mesh(
             prt_mesh,
-            # scalars="destzone",
+            scalars="k" if "k" in prt_mesh.point_data else "ilay",
             # cmap=["red", "red", "green", "blue"],
-            point_size=4,
+            point_size=8,
             line_width=3,
             render_points_as_spheres=True,
             render_lines_as_tubes=True,
             smooth_shading=True,
         )
-        p.add_mesh(drn_mesh, color="green", opacity=0.2)
-        p.add_mesh(riv_mesh, color="teal", opacity=0.2)
-        p.add_mesh(wel_mesh, color="red", opacity=0.3)
-        p.add_mesh(wel2_mesh, color="red", opacity=0.2)
-        p.add_mesh(bed_mesh, color="tan", opacity=0.1)
+
+        for key, bc_mesh in bc_meshes.items():
+
+            # plot each of the cells using the standard color
+            for bmsh in bc_mesh:
+                p.add_mesh(bmsh, color=bc_color_dict[key.upper()], opacity=0.2)
+
+        # p.add_mesh(bed_mesh, color="tan", opacity=0.1)
         # p.remove_scalar_bar()
         p.add_legend(
             labels=[
@@ -291,8 +287,8 @@ def plot_pathpoints_3d(gwf, mf6pl, paths, sp=1, title=None):
         if screenshot:
             p.screenshot(paths['figs_path'] / f"{paths['sim_name']}-paths-3d.png")
 
-    _plot()
-    _plot(screenshot=True)
+    _plot(paths)
+    _plot(paths, screenshot=True)
 
 
 def plot_all_pathlines(gwf, mf6pl, paths, title=None):
@@ -326,8 +322,8 @@ def plot_endpoints(
             styles.heading(ax if mp7pts is None else ax[0], heading=title)
 
         kwargs = {}
-        if color == "destination":
-            kwargs["colordest"] = colordest
+        # if color == "destination":
+        #     kwargs["colordest"] = colordest
 
         pts = plot_points(fig, ax if mp7pts is None else ax[0], gwf, mf6pts, **kwargs)
         if mp7pts is not None:
@@ -380,8 +376,23 @@ def plot_endpoints(
         plt.show()
         fig.savefig(paths['figs_path'] / f"{gwf.name}_plot_endpoints.png")
 
+def plot_capture_zone(pathlines):
+    import geopandas as gpd
+    from shapely import Polygon
+    points = {iprp: [] for iprp in np.unique(pathlines.iprp)}
+    for idx, row in pathlines.iterrows():
+        points[row.iprp].append((row.x, row.y))
+    gdfs = {}
+    for key, pnts in points.items():
+        p = Polygon(pnts)
+        x = p.convex_hull
+        gdf = gpd.GeoDataFrame({'name': ['demo'], 'geometry': [x]}, geometry='geometry')
+        ax = plt.gca()
+        gdf.plot(ax=ax, color='red', alpha=0.2)
+        gdfs[key] = gdf
 
-def plot_all(gwf, paths):
+
+def plot_all(gwf, prt, paths):
     # load results
     head = flopy.utils.HeadFile(os.path.join(gwf.model_ws, gwf.name + ".hds")).get_data()
     mf6pathlines = get_mf6_pathlines(paths['prt_ws'] / paths['trackcsvfile_prt'])
@@ -391,18 +402,19 @@ def plot_all(gwf, paths):
 
     # plot the results
     plot_head(gwf, paths, head=head)
-    plot_pathpoints(gwf, mf6pathlines, paths, title="2000-day points, colored by travel time")
+    plot_pathpoints(gwf, mf6pathlines, paths, )  # title="2000-day points, colored by travel time"
     plot_pathpoints_3d(
-        gwf, mf6pathlines, paths, title="Pathlines, 2000-day points,\ncolored by destination"
+        gwf, mf6pathlines, paths,  # title="Pathlines, 2000-day points,\ncolored by destination"
     )
-    plot_endpoints(
-        gwf,
-        mf6pathlines[(mf6pathlines.ireason == 0) | (mf6pathlines.ireason == 3)],
-        paths,
-        title="Release and termination points, colored by destination",
-        fig_name=f"{paths['sim_name']}-rel-term",
-        color="destination",
-    )
+
+    # plot_endpoints(
+    #     gwf,
+    #     mf6pathlines[(mf6pathlines.ireason == 0) | (mf6pathlines.ireason == 3)],
+    #     paths,
+    #     title="Release and termination points, colored by destination",
+    #     fig_name=f"{paths['sim_name']}-rel-term",
+    #     color="destination",
+    # )
 
 def get_mf6_pathlines(path):
     # load mf6 pathlines
