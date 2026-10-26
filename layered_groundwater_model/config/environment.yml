@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - ffmpeg
   - flopy
   - matplotlib
   - numpy
