@@ -1,0 +1,17 @@
+name: isws-demo-flopy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ffmpeg
+  - flopy
+  - matplotlib
+  - numpy
+  - openpyxl
+  - pandas
+  - pip
+  - pyyaml
+  - shapely
+  - notebook
+  - jupyterlab
+  - ipykernel
