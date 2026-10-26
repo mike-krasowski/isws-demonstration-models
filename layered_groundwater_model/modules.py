@@ -186,7 +186,7 @@ def get_nodes(gwf, locs):
         nodes.append(k * gwf.modelgrid.nrow * gwf.modelgrid.ncol + i * gwf.modelgrid.ncol + j)
     return nodes
 
-def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True):
+def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True, save_plots=True):
     """
     Load MODFLOW 6 simulation data and plot head and concentration time series
     for wells defined in a CSV file.
@@ -194,6 +194,7 @@ def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True):
     Parameters:
     - scenario (int): Scenario number to load data from.
     - show_plots (bool): Whether to display the plots.
+    - save_plots (bool): Whether to save the plots.
     """
     file_path = f"./outputs/s{scenario}/"
 
@@ -222,6 +223,11 @@ def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True):
     plt.ylabel('Heads [cm]')
     plt.legend(loc='lower right')
 
+    if save_plots:
+        if not os.path.exists(f'./outputs/s{scenario}/figs/'):
+            os.makedirs(f'./outputs/s{scenario}/figs/')
+        plt.savefig(f'./outputs/s{scenario}/figs/heads-time-series.png')
+
     # Plot concentrations
     plt.figure(2)
     for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
@@ -229,6 +235,11 @@ def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True):
     plt.xlabel('Time')
     plt.ylabel('Concentrations [?]')
     plt.legend(loc='lower right')
+
+    if save_plots:
+        if not os.path.exists(f'./outputs/s{scenario}/figs/'):
+            os.makedirs(f'./outputs/s{scenario}/figs/')
+        plt.savefig(f'./outputs/s{scenario}/figs/concentration-time-series.png')
 
     if show_plots:
         plt.show()
