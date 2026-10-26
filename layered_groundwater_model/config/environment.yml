@@ -1,4 +1,4 @@
-name: isws-demonstration-models
+name: isws-demo-lgwm
 channels:
   - conda-forge
   - defaults

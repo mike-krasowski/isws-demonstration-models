@@ -1270,3 +1270,63 @@ def make_animation(sim, nodes, wiggle, parameter=None):
     # return sim
 
 
+
+def plot_heads_and_concentrations_at_wells(scenario=2, show_plots=True, save_plots=True):
+    """
+    Load MODFLOW 6 simulation data and plot head and concentration time series
+    for wells defined in a CSV file.
+
+    Parameters:
+    - scenario (int): Scenario number to load data from.
+    - show_plots (bool): Whether to display the plots.
+    - save_plots (bool): Whether to save the plots.
+    """
+    file_path = f"./outputs/s{scenario}/"
+
+    # Load simulation
+    mf = flopy.mf6.MFSimulation.load(sim_name="mfsim", sim_ws=file_path)
+    gwf = mf.get_model(f"gwf_s{scenario}")
+    gwt = mf.get_model(f"gwt_s{scenario}")
+
+    # Extract head and concentration data
+    hds = gwf.output.head().get_alldata()
+    ucn = gwt.output.concentration().get_alldata()
+
+    print("Grabbed head and concentration data.")
+
+    # Load well information
+    well = pd.read_csv('./inputs/well_info.csv')
+    coords = well.set_index('type')
+    x_bin = coords.loc['well']['x_coord'] // gwf.modelgrid.delr[0]
+    z_bin = coords.loc['well']['z_coord'] // gwf.modelgrid.delz[0, 0, 0]
+
+    # Plot heads
+    plt.figure(1)
+    for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
+        plt.plot(hds[:, int(z), 0, int(x)], label=name)
+    plt.xlabel('Time')
+    plt.ylabel('Heads [cm]')
+    plt.legend(loc='lower right')
+
+    if save_plots:
+        if not os.path.exists(f'./outputs/s{scenario}/figs/'):
+            os.makedirs(f'./outputs/s{scenario}/figs/')
+        plt.savefig(f'./outputs/s{scenario}/figs/heads-time-series.png')
+
+    # Plot concentrations
+    plt.figure(2)
+    for z, x, name in zip(z_bin, x_bin, coords.loc['well']['id']):
+        plt.plot(ucn[:, int(z), 0, int(x)], label=name)
+    plt.xlabel('Time')
+    plt.ylabel('Concentrations [?]')
+    plt.legend(loc='lower right')
+
+    if save_plots:
+        if not os.path.exists(f'./outputs/s{scenario}/figs/'):
+            os.makedirs(f'./outputs/s{scenario}/figs/')
+        plt.savefig(f'./outputs/s{scenario}/figs/concentration-time-series.png')
+
+    if show_plots:
+        plt.show()
+        plt.close('all')
+    print('Function execution finished.')

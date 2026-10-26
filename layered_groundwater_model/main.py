@@ -113,9 +113,13 @@ for ppp, result in enumerate(results):
     sims.append(result[0])
     func_time += result[1]
 
+# plot heads and concentrations of all wells in the model
+plot_heads_and_concentrations_at_wells(scenario=2)
+
 print('ISWS: the WHOLE script took: {} mins with {} mins of main function time'.format(
     round((time.time() - start_time)/60, 2),
     round(func_time/60, 2)
 ))
+
 
 
