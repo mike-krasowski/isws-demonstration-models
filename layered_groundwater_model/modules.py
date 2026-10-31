@@ -440,11 +440,11 @@ def build_and_run_models(sname, wiggle):
         auxiliary=['CONCENTRATION', 'TEMPERATURE']
     )
 
-    # DRAINS DRAINS DRAINS
-    flopy.mf6.ModflowGwfdrn(
-        gwf,
-        stress_period_data=drn_spd
-    )
+    # # DRAINS DRAINS DRAINS
+    # flopy.mf6.ModflowGwfdrn(
+    #     gwf,
+    #     stress_period_data=drn_spd
+    # )
 
     # get the location info (layer and column) of the elements of well_info
     well_layer = []

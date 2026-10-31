@@ -20,6 +20,7 @@ import random
 from shapely import Polygon
 import shutil
 import time
+import random as rdm
 
 from modules import *
 
@@ -39,6 +40,8 @@ def main(input):
     :return: list
         two element list containing the simulation in position 0 and the runtime in position 1
     """
+
+    time.sleep(rdm.randint(0,5))
 
     # unpack the input tuple
     name = input[0]
@@ -71,6 +74,10 @@ max_workers = 6
 # which spreadsheets to read our scenarios from. The script will look for these csvs at ./inputs/scenarios
 # 's1' - long-running flow demonstration,
 # 's2' - injection at well 2, extraction at well 6
+# 's3' - injection at well 2, extraction at well 6 and 8
+# 's4' - injection at well 2 and 3, extraction at well 6
+# 's5' - 's2' with extraction pumping x 100
+# 's6' - 's2' with extraction pumping / 100
 scenarios = ['s2']
 
 # options here are 'head' (gwf), 'concentration' (gwt), and 'temperature' (gwe)
@@ -99,8 +106,9 @@ if len(scenarios) == 1:
 else:
 
     # for now, we know there are only two scenarios established, run them both.
-    inputs = [(scenarios[0], [None, 'temperature']),
-              (scenarios[1], ['concentration', 'temperature'])]
+    inputs = [(scenario, ['concentration']) for scenario in scenarios]
+    # inputs = [(scenarios[0], [None, 'temperature']),
+    #           (scenarios[1], ['concentration', 'temperature'])]
 
     if __name__ == "__main__":
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
