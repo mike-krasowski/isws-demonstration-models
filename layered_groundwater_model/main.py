@@ -78,6 +78,7 @@ max_workers = 6
 # 's4' - injection at well 2 and 3, extraction at well 6
 # 's5' - 's2' with extraction pumping x 100
 # 's6' - 's2' with extraction pumping / 100
+# 'sReverse - injection at well 3, extraction at well 6
 scenarios = ['s2']
 
 # options here are 'head' (gwf), 'concentration' (gwt), and 'temperature' (gwe)
