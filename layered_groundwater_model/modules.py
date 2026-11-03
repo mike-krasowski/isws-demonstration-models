@@ -440,11 +440,11 @@ def build_and_run_models(sname, wiggle):
         auxiliary=['CONCENTRATION', 'TEMPERATURE']
     )
 
-    # # DRAINS DRAINS DRAINS
-    # flopy.mf6.ModflowGwfdrn(
-    #     gwf,
-    #     stress_period_data=drn_spd
-    # )
+    # DRAINS DRAINS DRAINS
+    flopy.mf6.ModflowGwfdrn(
+        gwf,
+        stress_period_data=drn_spd
+    )
 
     # get the location info (layer and column) of the elements of well_info
     well_layer = []
@@ -1049,7 +1049,8 @@ def make_animation(sim, nodes, wiggle, parameter=None):
     gwe = sim.get_model(names[2])
 
     # the model naming structure means this should always work (e.g., gwf_s2)
-    sname = gwf.name[-2:]
+    import re
+    sname = re.findall(r'_(s\w*)$', gwf.name)[0]
 
     # import the geometries of the model (made by hand measurements of the table-top model
     topodata = pd.read_csv('./inputs/topology.csv')
