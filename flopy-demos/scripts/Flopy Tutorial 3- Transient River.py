@@ -30,14 +30,17 @@ dy = Ly/nrow
 dz = (ztop - zbot) / nlay
 
 #specify number of stress periods
-nper = 3
+nper = 12
 
 #specify if stress period is transient or steady-state
-steady = [True, False, False] #<-- relates to [SS, transient transient]
+#steady = [True, False, False] #<-- relates to [SS, transient transient]
+steady = [True] + [False]*(nper-1)
 # The first stress period is steady-state, and 2nd 3rd stress periods are transient.
-perlen = [1.0, 5.0, 5.0]  #This sets up the period length for each stress period. The unit come from itmuni (Below)
+#perlen = [1.0, 5.0, 5.0]  #This sets up the period length for each stress period. The unit come from itmuni (Below)
+perlen = [1.0] + [5.0]*(nper-1)
 # (The unit for period length is set up in the following dis package )
-nstp   = [1,   10,  10] #This sets up the number of time steps within each stress period
+#nstp   = [1,   10,  10] #This sets up the number of time steps within each stress period
+nstp = [1] + [10]*(nper-1)
 
 #create flopy discretization object, length units are meters (2) and time units are days (4)
 dis = flopy.modflow.ModflowDis(model=m, nlay=nlay, nrow=nrow, ncol=ncol,
@@ -98,35 +101,52 @@ print('CHD Stress Period Data: \n', chd_spd)
 chd = flopy.modflow.ModflowChd(model=m, stress_period_data=chd_spd)
 
 #DEFINE RIVERS
+# River properties
+k_rivbott = 1
+sed_thick = 1
 
-#stress period 1 river cells for RIV package
-riv_sp1   = [] #create list to store all river cells for stress period 1; Format [layer, row, column, stage, conductance, bottom]
-k_rivbott = 1 #river bottom hydraulic conductivity in m/d
-sed_thick = 1 #thickness of riverbed sediment in m
-cond      = k_rivbott*(dy)*(dx)/(sed_thick) #river bed conductance in m^2/d
-r_stage   = 1 #stage in river (stress period 1)
-r_bott    = 0 #river bottom
-#assign river data to cells in central column
-for iii in range(nrow):
-    riv_sp1.append([0, iii, ncol/2, r_stage, cond, r_bott])
+cond = k_rivbott * dy * dx / sed_thick
+r_bott = 0
+# Create sinusoidal river stages
 
+mean_stage = 3.0
+amplitude = 2.0
 
-#stress period 2 river cells
-riv_sp2 = [] #create list to store all river cells for stress period 2
-r_stage = 5 #stage in river (stress period 2)
-for iii in range(nrow):
-    riv_sp2.append([0, iii, ncol/2, r_stage, cond, r_bott])
+time = np.arange(nper)
 
-#stress period 3 river cells
-riv_sp3 = [] #create list to store all river cells for stress period 3
-r_stage = 1 #stage in river (stress period 3)
-for iii in range(nrow):
-    riv_sp3.append([0, iii, ncol/2, r_stage, cond, r_bott])
+river_stage = mean_stage + amplitude * np.sin(
+    2*np.pi*time/nper
+)
+
+riv_spd = {}
+
+for sp in range(nper):
+
+    riv_cells = []
+
+    for row in range(nrow):
+
+        riv_cells.append([
+            0,                  # layer
+            row,                # row
+            int(ncol/2),        # river column
+            river_stage[sp],    # stage
+            cond,               # conductance
+            r_bott              # river bottom
+        ])
+
+    riv_spd[sp] = riv_cells
 
 
 #create dictionary of stress period data
-riv_spd = {0: riv_sp1, 1: riv_sp2, 2: riv_sp3}
-
+#riv_spd = {0: riv_sp1, 1: riv_sp2, 2: riv_sp3}
+plt.figure(figsize=(8,4))
+plt.plot(time, river_stage, 'bo-')
+plt.xlabel('Stress Period')
+plt.ylabel('River Stage (m)')
+plt.title('Sinusoidal River Stage')
+plt.grid(True)
+plt.show()
 #attach river package
 riv = flopy.modflow.ModflowRiv(model=m,stress_period_data = riv_spd)
 
@@ -177,7 +197,8 @@ if not success:
     raise Exception('MODFLOW did not terminate normally.')
 
 #extract binary data from head file
-times   = [perlen[0],perlen[0]+perlen[1],perlen[0]+perlen[1]+perlen[2]] #extract times at end of each stress period
+#times   = [perlen[0],perlen[0]+perlen[1],perlen[0]+perlen[1]+perlen[2]] #extract times at end of each stress period
+times = np.cumsum(perlen)
 head    = {} #create dictionary to store head data at end of each stress period
 frf     = {} #create dictionary to store flows through right cell face at end of each stress period
 fff     = {} #create dictionary to store flows through front cell face at end of each stress period
